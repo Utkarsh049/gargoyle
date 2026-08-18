@@ -1,6 +1,7 @@
-// Command gargoyle is the Gargoyle gateway process. As of Phase 5, it
+// Command gargoyle is the Gargoyle gateway process. As of Phase 6, it
 // resolves each request's API key to a registered client (Postgres,
 // cached in memory), enforces per-client rate limits (Redis sliding window),
+// evaluates rule-based abuse heuristics (header anomalies, endpoint sweeps, timing pacing),
 // exposes Prometheus metrics, logs blocked decisions to Postgres (request_logs),
 // and forwards allowed requests to the client's own target_url.
 package main
@@ -19,6 +20,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
 
+	"gargoyle/internal/abuse"
+	"gargoyle/internal/abuse/rules"
 	"gargoyle/internal/client"
 	"gargoyle/internal/config"
 	"gargoyle/internal/db"
@@ -73,6 +76,16 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	promMetrics := metrics.New(prometheus.DefaultRegisterer)
 	rp := proxy.New(logger)
 
+	// Build abuse detection engine and heuristic rules (Phase 6)
+	sweepTracker := rules.NewRedisSweepTracker(rdb)
+	timingTracker := rules.NewRedisTimingTracker(rdb)
+	abuseEngine := abuse.NewEngine(
+		cfg.AbuseBlockThreshold,
+		rules.NewHeaderAnomalyRule(),
+		rules.NewEndpointSweepRule(sweepTracker, cfg.AbuseSweepThreshold, cfg.AbuseSweepWindow),
+		rules.NewRequestSequencingRule(timingTracker),
+	)
+
 	if clientCount, err := registry.CountClients(ctx); err != nil {
 		logger.WarnContext(ctx, "metrics: failed to query initial active client count", "error", err)
 	} else {
@@ -95,6 +108,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		r.Use(ratelimit.PreAuthMiddleware(limiter, cfg.PreAuthRateLimit, logger))
 		r.Use(client.Middleware(registry, logger))
 		r.Use(ratelimit.Middleware(limiter, logStore, logger))
+		r.Use(abuse.Middleware(abuseEngine, logStore, promMetrics, logger))
 		r.Handle("/*", rp)
 	})
 
