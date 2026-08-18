@@ -15,13 +15,20 @@ func Middleware(m *Metrics) func(http.Handler) http.Handler {
 			start := time.Now()
 			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 
+			defer func() {
+				duration := time.Since(start).Seconds()
+				status := ww.Status()
+				if status == 0 {
+					// If the handler panicked or never wrote a status, classify as 500 / error
+					status = http.StatusInternalServerError
+				}
+				outcome := outcomeFromStatus(status)
+
+				m.RequestsTotal.WithLabelValues(outcome).Inc()
+				m.RequestDuration.WithLabelValues(outcome).Observe(duration)
+			}()
+
 			next.ServeHTTP(ww, r)
-
-			duration := time.Since(start).Seconds()
-			outcome := outcomeFromStatus(ww.Status())
-
-			m.RequestsTotal.WithLabelValues(outcome).Inc()
-			m.RequestDuration.WithLabelValues(outcome).Observe(duration)
 		})
 	}
 }

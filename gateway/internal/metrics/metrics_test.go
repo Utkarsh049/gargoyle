@@ -93,3 +93,28 @@ func TestPrometheusScrapeEndpoint(t *testing.T) {
 		t.Fatalf("expected gargoyle_active_clients 5 in scrape output, got:\n%s", body)
 	}
 }
+
+func TestMetricsMiddlewarePanicRecovery(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	m := New(reg)
+
+	handler := Middleware(m)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		panic("unexpected nil pointer")
+	}))
+
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("expected panic to propagate")
+		}
+
+		count := testutil.ToFloat64(m.RequestsTotal.WithLabelValues(OutcomeError))
+		if count != 1 {
+			t.Fatalf("expected error counter to be 1 after panic, got %v", count)
+		}
+	}()
+
+	req := httptest.NewRequest(http.MethodGet, "/panic", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+}
