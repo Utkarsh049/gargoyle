@@ -7,6 +7,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -128,8 +129,7 @@ func getInt(key string, fallback int) (int, error) {
 	if !ok || v == "" {
 		return fallback, nil
 	}
-	var n int
-	_, err := fmt.Sscanf(v, "%d", &n)
+	n, err := strconv.Atoi(v)
 	if err != nil {
 		return 0, fmt.Errorf("config: parsing %s %q as integer: %w", key, v, err)
 	}
