@@ -1,23 +1,27 @@
-// Command gargoyle is the Gargoyle gateway process. As of Phase 2, it
+// Command gargoyle is the Gargoyle gateway process. As of Phase 3, it
 // resolves each request's API key to a registered client (Postgres,
-// cached in memory) and forwards it to that client's own target_url,
-// instead of a single hardcoded upstream.
+// cached in memory), enforces per-client rate limits (Redis sliding window),
+// and forwards allowed requests to the client's own target_url.
 package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/redis/go-redis/v9"
 
 	"gargoyle/internal/client"
 	"gargoyle/internal/config"
 	"gargoyle/internal/db"
 	"gargoyle/internal/httpserver"
 	"gargoyle/internal/proxy"
+	"gargoyle/internal/ratelimit"
 )
 
 func main() {
@@ -45,22 +49,34 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		return err
 	}
 
+	redisOpts, err := redis.ParseURL(cfg.RedisURL)
+	if err != nil {
+		return fmt.Errorf("redis: parsing url: %w", err)
+	}
+	rdb := redis.NewClient(redisOpts)
+	defer rdb.Close()
+
+	pingCtx, pingCancel := context.WithTimeout(ctx, 5*time.Second)
+	defer pingCancel()
+	if err := rdb.Ping(pingCtx).Err(); err != nil {
+		return fmt.Errorf("redis: connecting: %w", err)
+	}
+
 	registry := client.NewRegistry(client.NewPostgresStore(pool), cfg.ClientCacheTTL)
+	limiter := ratelimit.NewRedisLimiter(rdb, cfg.RateLimitWindow)
 	rp := proxy.New(logger)
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
 	r.Use(requestLogger(logger))
 
 	r.Get("/healthz", handleHealthz)
 
-	// Everything else requires a resolved client; client.Middleware
-	// rejects unauthenticated/unknown-key requests with 401 before they
-	// ever reach the proxy.
+	// Authenticated & rate-limited routes
 	r.Group(func(r chi.Router) {
 		r.Use(client.Middleware(registry, logger))
+		r.Use(ratelimit.Middleware(limiter, logger))
 		r.Handle("/*", rp)
 	})
 
