@@ -27,8 +27,13 @@ type Config struct {
 	RedisURL string
 
 	// RateLimitWindow is the sliding window duration over which client rate
-	// limits are enforced (defaults to 1 minute).
+	// limits are enforced (defaults to 1 minute, must be >= 1ms).
 	RateLimitWindow time.Duration
+
+	// PreAuthRateLimit bounds the number of requests per IP within the
+	// sliding window allowed before authentication (Phase 3 protection against
+	// unauthenticated key-stuffing/DoS attacks, defaults to 60 req/window). Set to 0 to disable.
+	PreAuthRateLimit int
 
 	// ClientCacheTTL bounds how long a resolved client (API key -> target
 	// URL, rate limit, plan tier) is cached in memory before the next
@@ -62,6 +67,17 @@ func Load() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	if rateLimitWindow < time.Millisecond {
+		return nil, fmt.Errorf("config: GARGOYLE_RATE_LIMIT_WINDOW must be at least 1ms, got %v", rateLimitWindow)
+	}
+
+	preAuthRateLimit, err := getInt("GARGOYLE_PRE_AUTH_RATE_LIMIT", 60)
+	if err != nil {
+		return nil, err
+	}
+	if preAuthRateLimit < 0 {
+		return nil, fmt.Errorf("config: GARGOYLE_PRE_AUTH_RATE_LIMIT cannot be negative, got %d", preAuthRateLimit)
+	}
 
 	readHeaderTimeout, err := getDuration("GARGOYLE_READ_HEADER_TIMEOUT", 5*time.Second)
 	if err != nil {
@@ -89,6 +105,7 @@ func Load() (*Config, error) {
 		DatabaseURL:       getEnv("GARGOYLE_DATABASE_URL", "postgres://gargoyle:gargoyle@localhost:5432/gargoyle?sslmode=disable"),
 		RedisURL:          getEnv("GARGOYLE_REDIS_URL", "redis://localhost:6379/0"),
 		RateLimitWindow:   rateLimitWindow,
+		PreAuthRateLimit:  preAuthRateLimit,
 		ClientCacheTTL:    clientCacheTTL,
 		ReadHeaderTimeout: readHeaderTimeout,
 		ReadTimeout:       readTimeout,
@@ -104,6 +121,19 @@ func getEnv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func getInt(key string, fallback int) (int, error) {
+	v, ok := os.LookupEnv(key)
+	if !ok || v == "" {
+		return fallback, nil
+	}
+	var n int
+	_, err := fmt.Sscanf(v, "%d", &n)
+	if err != nil {
+		return 0, fmt.Errorf("config: parsing %s %q as integer: %w", key, v, err)
+	}
+	return n, nil
 }
 
 func getDuration(key string, fallback time.Duration) (time.Duration, error) {

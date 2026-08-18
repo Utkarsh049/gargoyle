@@ -9,7 +9,7 @@ Ten phases, ordered so that every phase produces something runnable and demoable
 - [x] Phase 1 — Bare reverse proxy
 - [x] Phase 2 — Client registry (multi-tenancy)
 - [x] Phase 3 — Rate limiting
-- [ ] Phase 4 — Metrics exposition
+- [x] Phase 4 — Metrics exposition
 - [ ] Phase 5 — Per-client logging
 - [ ] Phase 6 — Rule-based abuse detection
 - [ ] Phase 7 — Traffic simulator

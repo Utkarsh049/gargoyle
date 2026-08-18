@@ -71,8 +71,11 @@ type RedisLimiter struct {
 	window time.Duration
 }
 
-// NewRedisLimiter constructs a RedisLimiter with the specified window.
+// NewRedisLimiter constructs a RedisLimiter with the specified window (minimum 1ms).
 func NewRedisLimiter(rdb *redis.Client, window time.Duration) *RedisLimiter {
+	if window < time.Millisecond {
+		window = time.Millisecond
+	}
 	return &RedisLimiter{
 		rdb:    rdb,
 		window: window,
