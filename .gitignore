@@ -1,0 +1,13 @@
+# Go build artifacts
+/gateway/bin/
+*.exe
+*.test
+*.out
+
+# Local environment overrides
+.env
+.env.*
+!.env.example
+
+# Editor/OS cruft
+.DS_Store
