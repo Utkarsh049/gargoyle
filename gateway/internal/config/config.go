@@ -22,6 +22,14 @@ type Config struct {
 	// registry (Phase 2) and, from Phase 5 onward, per-client request logs.
 	DatabaseURL string
 
+	// RedisURL is the connection string for Redis used by the rate limiter
+	// (Phase 3) and abuse detection (Phase 6).
+	RedisURL string
+
+	// RateLimitWindow is the sliding window duration over which client rate
+	// limits are enforced (defaults to 1 minute).
+	RateLimitWindow time.Duration
+
 	// ClientCacheTTL bounds how long a resolved client (API key -> target
 	// URL, rate limit, plan tier) is cached in memory before the next
 	// lookup re-reads it from Postgres. See PROJECT.md §8.
@@ -50,6 +58,11 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	rateLimitWindow, err := getDuration("GARGOYLE_RATE_LIMIT_WINDOW", 1*time.Minute)
+	if err != nil {
+		return nil, err
+	}
+
 	readHeaderTimeout, err := getDuration("GARGOYLE_READ_HEADER_TIMEOUT", 5*time.Second)
 	if err != nil {
 		return nil, err
@@ -74,6 +87,8 @@ func Load() (*Config, error) {
 	cfg := &Config{
 		ListenAddr:        getEnv("GARGOYLE_LISTEN_ADDR", ":8080"),
 		DatabaseURL:       getEnv("GARGOYLE_DATABASE_URL", "postgres://gargoyle:gargoyle@localhost:5432/gargoyle?sslmode=disable"),
+		RedisURL:          getEnv("GARGOYLE_REDIS_URL", "redis://localhost:6379/0"),
+		RateLimitWindow:   rateLimitWindow,
 		ClientCacheTTL:    clientCacheTTL,
 		ReadHeaderTimeout: readHeaderTimeout,
 		ReadTimeout:       readTimeout,

@@ -29,13 +29,15 @@ func TestHashAPIKeyIsDeterministicAndDistinct(t *testing.T) {
 	const keyA = "gk_live_same-key-value"
 	const keyB = "gk_live_different-key-value"
 
-	if HashAPIKey(keyA) != HashAPIKey(keyA) {
+	hash1 := HashAPIKey(keyA)
+	hash2 := HashAPIKey(keyA)
+	if hash1 != hash2 {
 		t.Fatal("expected HashAPIKey to be deterministic for the same input")
 	}
-	if HashAPIKey(keyA) == HashAPIKey(keyB) {
+	if hash1 == HashAPIKey(keyB) {
 		t.Fatal("expected different keys to hash to different values")
 	}
-	if HashAPIKey(keyA) == keyA {
+	if hash1 == keyA {
 		t.Fatal("expected the hash to differ from the plaintext key")
 	}
 }
