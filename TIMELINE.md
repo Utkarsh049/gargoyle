@@ -7,7 +7,7 @@ Ten phases, ordered so that every phase produces something runnable and demoable
 ## Progress
 
 - [x] Phase 1 — Bare reverse proxy
-- [ ] Phase 2 — Client registry (multi-tenancy)
+- [x] Phase 2 — Client registry (multi-tenancy)
 - [ ] Phase 3 — Rate limiting
 - [ ] Phase 4 — Metrics exposition
 - [ ] Phase 5 — Per-client logging

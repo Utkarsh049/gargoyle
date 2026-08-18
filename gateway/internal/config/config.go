@@ -6,24 +6,26 @@ package config
 
 import (
 	"fmt"
-	"net/url"
 	"os"
 	"time"
 )
 
 // Config holds all settings needed to run the Gargoyle gateway.
 //
-// Phase 1 only needs a listen address and a single hardcoded upstream
-// target. Later phases (client registry, Redis, Postgres, etc.) will add
-// fields here rather than introducing a second, competing config source.
+// Later phases (Redis, abuse detection thresholds, etc.) will add fields
+// here rather than introducing a second, competing config source.
 type Config struct {
 	// ListenAddr is the address the HTTP server binds to, e.g. ":8080".
 	ListenAddr string
 
-	// TargetURL is the upstream backend all traffic is forwarded to.
-	// This is a temporary, hardcoded stand-in for the per-client
-	// target_url lookup that arrives in Phase 2.
-	TargetURL *url.URL
+	// DatabaseURL is the Postgres connection string used for the client
+	// registry (Phase 2) and, from Phase 5 onward, per-client request logs.
+	DatabaseURL string
+
+	// ClientCacheTTL bounds how long a resolved client (API key -> target
+	// URL, rate limit, plan tier) is cached in memory before the next
+	// lookup re-reads it from Postgres. See PROJECT.md §8.
+	ClientCacheTTL time.Duration
 
 	// ReadHeaderTimeout bounds how long the server waits to read request
 	// headers, mitigating slow-header (Slowloris-style) attacks.
@@ -41,15 +43,11 @@ type Config struct {
 
 // Load reads configuration from environment variables, applying sane
 // defaults for anything not set, and returns an error if the resulting
-// configuration is invalid (e.g. an unparsable target URL).
+// configuration is invalid.
 func Load() (*Config, error) {
-	targetURLStr := getEnv("GARGOYLE_TARGET_URL", "http://localhost:9000")
-	targetURL, err := url.Parse(targetURLStr)
+	clientCacheTTL, err := getDuration("GARGOYLE_CLIENT_CACHE_TTL", 30*time.Second)
 	if err != nil {
-		return nil, fmt.Errorf("config: parsing GARGOYLE_TARGET_URL %q: %w", targetURLStr, err)
-	}
-	if targetURL.Scheme == "" || targetURL.Host == "" {
-		return nil, fmt.Errorf("config: GARGOYLE_TARGET_URL %q must be an absolute URL (scheme + host)", targetURLStr)
+		return nil, err
 	}
 
 	readHeaderTimeout, err := getDuration("GARGOYLE_READ_HEADER_TIMEOUT", 5*time.Second)
@@ -75,7 +73,8 @@ func Load() (*Config, error) {
 
 	cfg := &Config{
 		ListenAddr:        getEnv("GARGOYLE_LISTEN_ADDR", ":8080"),
-		TargetURL:         targetURL,
+		DatabaseURL:       getEnv("GARGOYLE_DATABASE_URL", "postgres://gargoyle:gargoyle@localhost:5432/gargoyle?sslmode=disable"),
+		ClientCacheTTL:    clientCacheTTL,
 		ReadHeaderTimeout: readHeaderTimeout,
 		ReadTimeout:       readTimeout,
 		WriteTimeout:      writeTimeout,

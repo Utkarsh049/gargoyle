@@ -1,6 +1,7 @@
-// Command gargoyle is the Gargoyle gateway process. Phase 1 wires up the
-// bare skeleton: a Chi router that forwards every request to a single
-// hardcoded upstream via net/http/httputil.ReverseProxy.
+// Command gargoyle is the Gargoyle gateway process. As of Phase 2, it
+// resolves each request's API key to a registered client (Postgres,
+// cached in memory) and forwards it to that client's own target_url,
+// instead of a single hardcoded upstream.
 package main
 
 import (
@@ -12,7 +13,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"gargoyle/internal/client"
 	"gargoyle/internal/config"
+	"gargoyle/internal/db"
 	"gargoyle/internal/httpserver"
 	"gargoyle/internal/proxy"
 )
@@ -20,19 +23,30 @@ import (
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
-	if err := run(logger); err != nil {
+	if err := run(context.Background(), logger); err != nil {
 		logger.Error("gargoyle: fatal error", "error", err)
 		os.Exit(1)
 	}
 }
 
-func run(logger *slog.Logger) error {
+func run(ctx context.Context, logger *slog.Logger) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return err
 	}
 
-	rp := proxy.New(cfg.TargetURL, logger)
+	pool, err := db.Connect(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+
+	if err := db.Migrate(ctx, pool); err != nil {
+		return err
+	}
+
+	registry := client.NewRegistry(client.NewPostgresStore(pool), cfg.ClientCacheTTL)
+	rp := proxy.New(logger)
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -41,7 +55,14 @@ func run(logger *slog.Logger) error {
 	r.Use(requestLogger(logger))
 
 	r.Get("/healthz", handleHealthz)
-	r.Handle("/*", rp)
+
+	// Everything else requires a resolved client; client.Middleware
+	// rejects unauthenticated/unknown-key requests with 401 before they
+	// ever reach the proxy.
+	r.Group(func(r chi.Router) {
+		r.Use(client.Middleware(registry, logger))
+		r.Handle("/*", rp)
+	})
 
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,
@@ -52,17 +73,14 @@ func run(logger *slog.Logger) error {
 		IdleTimeout:       cfg.IdleTimeout,
 	}
 
-	logger.Info("gargoyle: starting",
-		"listen_addr", cfg.ListenAddr,
-		"target_url", cfg.TargetURL.String(),
-	)
+	logger.Info("gargoyle: starting", "listen_addr", cfg.ListenAddr)
 
-	return httpserver.Run(context.Background(), srv, cfg.ShutdownTimeout, logger)
+	return httpserver.Run(ctx, srv, cfg.ShutdownTimeout, logger)
 }
 
-// handleHealthz is a liveness endpoint that never touches the upstream, so
-// it stays healthy independently of whether the backend is reachable. It's
-// deliberately excluded from proxying.
+// handleHealthz is a liveness endpoint that never touches Postgres or any
+// client's upstream, so it stays healthy independently of both. It's
+// deliberately excluded from client resolution and proxying.
 func handleHealthz(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("ok"))
@@ -79,14 +97,19 @@ func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 
 			next.ServeHTTP(ww, r)
 
-			logger.InfoContext(r.Context(), "request",
+			attrs := []any{
 				"request_id", middleware.GetReqID(r.Context()),
 				"method", r.Method,
 				"path", r.URL.Path,
 				"status", ww.Status(),
 				"bytes", ww.BytesWritten(),
 				"remote_addr", r.RemoteAddr,
-			)
+			}
+			if c, ok := client.FromContext(r.Context()); ok {
+				attrs = append(attrs, "client_id", c.ID, "client_name", c.Name)
+			}
+
+			logger.InfoContext(r.Context(), "request", attrs...)
 		})
 	}
 }
