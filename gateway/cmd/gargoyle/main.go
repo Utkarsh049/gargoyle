@@ -73,8 +73,11 @@ func run(ctx context.Context, logger *slog.Logger) error {
 
 	r.Get("/healthz", handleHealthz)
 
-	// Authenticated & rate-limited routes
+	// Rate-limited and authenticated ingress routes
 	r.Group(func(r chi.Router) {
+		// PreAuthMiddleware enforces IP-based rate limiting before authentication
+		// to protect the client registry and Postgres against unauthenticated DoS/key-stuffing floods.
+		r.Use(ratelimit.PreAuthMiddleware(limiter, cfg.PreAuthRateLimit, logger))
 		r.Use(client.Middleware(registry, logger))
 		r.Use(ratelimit.Middleware(limiter, logger))
 		r.Handle("/*", rp)

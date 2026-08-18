@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"math"
+	"net"
 	"net/http"
 	"strconv"
 
@@ -80,4 +81,70 @@ func Middleware(limiter Limiter, logger *slog.Logger) func(http.Handler) http.Ha
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// PreAuthMiddleware enforces IP-based rate limiting on incoming requests before
+// authentication or database lookups occur. This protects the registry/Postgres
+// from connection exhaustion attacks driven by streams of distinct, randomized API keys.
+//
+// If limit <= 0, pre-authentication rate limiting is disabled and requests pass through.
+func PreAuthMiddleware(limiter Limiter, limit int, logger *slog.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if limit <= 0 {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			ip := extractClientIP(r.RemoteAddr)
+			key := "ip:" + ip
+
+			res, err := limiter.Allow(r.Context(), key, limit)
+			if err != nil {
+				// Fail-open on Redis error
+				logger.ErrorContext(r.Context(), "ratelimit: pre-auth check failed, failing open",
+					"ip", ip,
+					"error", err,
+				)
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			resetSec := int(math.Ceil(res.ResetAfter.Seconds()))
+			if resetSec < 1 {
+				resetSec = 1
+			}
+
+			if !res.Allowed {
+				w.Header().Set("Retry-After", strconv.Itoa(resetSec))
+				w.Header().Set("X-RateLimit-Limit", strconv.Itoa(res.Limit))
+				w.Header().Set("X-RateLimit-Remaining", "0")
+				w.Header().Set("X-RateLimit-Reset", strconv.Itoa(resetSec))
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusTooManyRequests)
+
+				_ = json.NewEncoder(w).Encode(rateLimitErrorResponse{
+					Error:      "rate limit exceeded",
+					RetryAfter: resetSec,
+				})
+
+				logger.WarnContext(r.Context(), "ratelimit: pre-auth request throttled",
+					"ip", ip,
+					"limit", res.Limit,
+					"retry_after_seconds", resetSec,
+				)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func extractClientIP(remoteAddr string) string {
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		return remoteAddr
+	}
+	return host
 }
