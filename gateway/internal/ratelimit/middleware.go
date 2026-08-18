@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"gargoyle/internal/client"
+	"gargoyle/internal/metrics"
 )
 
 type rateLimitErrorResponse struct {
@@ -60,6 +61,7 @@ func Middleware(limiter Limiter, logger *slog.Logger) func(http.Handler) http.Ha
 			w.Header().Set("X-RateLimit-Reset", strconv.Itoa(resetSec))
 
 			if !res.Allowed {
+				metrics.SetDecision(r.Context(), metrics.OutcomeRateLimited)
 				w.Header().Set("Retry-After", strconv.Itoa(resetSec))
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusTooManyRequests)
@@ -116,6 +118,7 @@ func PreAuthMiddleware(limiter Limiter, limit int, logger *slog.Logger) func(htt
 			}
 
 			if !res.Allowed {
+				metrics.SetDecision(r.Context(), metrics.OutcomeRateLimited)
 				w.Header().Set("Retry-After", strconv.Itoa(resetSec))
 				w.Header().Set("X-RateLimit-Limit", strconv.Itoa(res.Limit))
 				w.Header().Set("X-RateLimit-Remaining", "0")

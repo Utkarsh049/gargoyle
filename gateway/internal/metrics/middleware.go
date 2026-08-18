@@ -14,15 +14,19 @@ func Middleware(m *Metrics) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+			r = r.WithContext(NewDecisionContext(r.Context()))
 
 			defer func() {
 				duration := time.Since(start).Seconds()
-				status := ww.Status()
-				if status == 0 {
-					// If the handler panicked or never wrote a status, classify as 500 / error
-					status = http.StatusInternalServerError
+				outcome := GetDecision(r.Context())
+				if outcome == "" {
+					status := ww.Status()
+					if status == 0 {
+						// If the handler panicked or never wrote a status, classify as 500 / error
+						status = http.StatusInternalServerError
+					}
+					outcome = outcomeFromStatus(status)
 				}
-				outcome := outcomeFromStatus(status)
 
 				m.RequestsTotal.WithLabelValues(outcome).Inc()
 				m.RequestDuration.WithLabelValues(outcome).Observe(duration)
