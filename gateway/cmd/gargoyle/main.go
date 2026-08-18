@@ -70,6 +70,12 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	promMetrics := metrics.New(prometheus.DefaultRegisterer)
 	rp := proxy.New(logger)
 
+	if clientCount, err := registry.CountClients(ctx); err != nil {
+		logger.WarnContext(ctx, "metrics: failed to query initial active client count", "error", err)
+	} else {
+		promMetrics.ActiveClients.Set(float64(clientCount))
+	}
+
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Recoverer)

@@ -14,4 +14,5 @@ var ErrNotFound = errors.New("client: not found")
 // real database.
 type Store interface {
 	FindByAPIKeyHash(ctx context.Context, hash string) (*Client, error)
+	CountClients(ctx context.Context) (int, error)
 }
