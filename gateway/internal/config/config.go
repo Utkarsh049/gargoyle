@@ -36,6 +36,17 @@ type Config struct {
 	// unauthenticated key-stuffing/DoS attacks, defaults to 60 req/window). Set to 0 to disable.
 	PreAuthRateLimit int
 
+	// AbuseBlockThreshold is the minimum risk score (0.0 to 1.0) required to
+	// block a request with 403 Forbidden (Phase 6, defaults to 0.8).
+	AbuseBlockThreshold float64
+
+	// AbuseSweepThreshold is the maximum number of distinct paths allowed from
+	// the same client/IP within AbuseSweepWindow before triggering sweep detection (Phase 6, defaults to 10).
+	AbuseSweepThreshold int
+
+	// AbuseSweepWindow is the sliding window for tracking distinct endpoints (Phase 6, defaults to 10s).
+	AbuseSweepWindow time.Duration
+
 	// ClientCacheTTL bounds how long a resolved client (API key -> target
 	// URL, rate limit, plan tier) is cached in memory before the next
 	// lookup re-reads it from Postgres. See PROJECT.md §8.
@@ -80,6 +91,30 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("config: GARGOYLE_PRE_AUTH_RATE_LIMIT cannot be negative, got %d", preAuthRateLimit)
 	}
 
+	abuseBlockThreshold, err := getFloat("GARGOYLE_ABUSE_BLOCK_THRESHOLD", 0.8)
+	if err != nil {
+		return nil, err
+	}
+	if abuseBlockThreshold < 0.0 || abuseBlockThreshold > 1.0 {
+		return nil, fmt.Errorf("config: GARGOYLE_ABUSE_BLOCK_THRESHOLD must be between 0.0 and 1.0, got %v", abuseBlockThreshold)
+	}
+
+	abuseSweepThreshold, err := getInt("GARGOYLE_ABUSE_SWEEP_THRESHOLD", 10)
+	if err != nil {
+		return nil, err
+	}
+	if abuseSweepThreshold < 0 {
+		return nil, fmt.Errorf("config: GARGOYLE_ABUSE_SWEEP_THRESHOLD cannot be negative, got %d", abuseSweepThreshold)
+	}
+
+	abuseSweepWindow, err := getDuration("GARGOYLE_ABUSE_SWEEP_WINDOW", 10*time.Second)
+	if err != nil {
+		return nil, err
+	}
+	if abuseSweepWindow < time.Millisecond {
+		return nil, fmt.Errorf("config: GARGOYLE_ABUSE_SWEEP_WINDOW must be at least 1ms, got %v", abuseSweepWindow)
+	}
+
 	readHeaderTimeout, err := getDuration("GARGOYLE_READ_HEADER_TIMEOUT", 5*time.Second)
 	if err != nil {
 		return nil, err
@@ -102,17 +137,20 @@ func Load() (*Config, error) {
 	}
 
 	cfg := &Config{
-		ListenAddr:        getEnv("GARGOYLE_LISTEN_ADDR", ":8080"),
-		DatabaseURL:       getEnv("GARGOYLE_DATABASE_URL", "postgres://gargoyle:gargoyle@localhost:5432/gargoyle?sslmode=disable"),
-		RedisURL:          getEnv("GARGOYLE_REDIS_URL", "redis://localhost:6379/0"),
-		RateLimitWindow:   rateLimitWindow,
-		PreAuthRateLimit:  preAuthRateLimit,
-		ClientCacheTTL:    clientCacheTTL,
-		ReadHeaderTimeout: readHeaderTimeout,
-		ReadTimeout:       readTimeout,
-		WriteTimeout:      writeTimeout,
-		IdleTimeout:       idleTimeout,
-		ShutdownTimeout:   shutdownTimeout,
+		ListenAddr:          getEnv("GARGOYLE_LISTEN_ADDR", ":8080"),
+		DatabaseURL:         getEnv("GARGOYLE_DATABASE_URL", "postgres://gargoyle:gargoyle@localhost:5432/gargoyle?sslmode=disable"),
+		RedisURL:            getEnv("GARGOYLE_REDIS_URL", "redis://localhost:6379/0"),
+		RateLimitWindow:     rateLimitWindow,
+		PreAuthRateLimit:    preAuthRateLimit,
+		AbuseBlockThreshold: abuseBlockThreshold,
+		AbuseSweepThreshold: abuseSweepThreshold,
+		AbuseSweepWindow:    abuseSweepWindow,
+		ClientCacheTTL:      clientCacheTTL,
+		ReadHeaderTimeout:   readHeaderTimeout,
+		ReadTimeout:         readTimeout,
+		WriteTimeout:        writeTimeout,
+		IdleTimeout:         idleTimeout,
+		ShutdownTimeout:     shutdownTimeout,
 	}
 	return cfg, nil
 }
@@ -134,6 +172,18 @@ func getInt(key string, fallback int) (int, error) {
 		return 0, fmt.Errorf("config: parsing %s %q as integer: %w", key, v, err)
 	}
 	return n, nil
+}
+
+func getFloat(key string, fallback float64) (float64, error) {
+	v, ok := os.LookupEnv(key)
+	if !ok || v == "" {
+		return fallback, nil
+	}
+	f, err := strconv.ParseFloat(v, 64)
+	if err != nil {
+		return 0, fmt.Errorf("config: parsing %s %q as float: %w", key, v, err)
+	}
+	return f, nil
 }
 
 func getDuration(key string, fallback time.Duration) (time.Duration, error) {
