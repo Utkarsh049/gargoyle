@@ -25,6 +25,15 @@ func TestConfigLoadDefaults(t *testing.T) {
 	if cfg.PreAuthRateLimit != 60 {
 		t.Fatalf("expected PreAuthRateLimit 60, got %d", cfg.PreAuthRateLimit)
 	}
+	if cfg.AbuseBlockThreshold != 0.8 {
+		t.Fatalf("expected AbuseBlockThreshold 0.8, got %v", cfg.AbuseBlockThreshold)
+	}
+	if cfg.AbuseSweepThreshold != 10 {
+		t.Fatalf("expected AbuseSweepThreshold 10, got %d", cfg.AbuseSweepThreshold)
+	}
+	if cfg.AbuseSweepWindow != 10*time.Second {
+		t.Fatalf("expected AbuseSweepWindow 10s, got %v", cfg.AbuseSweepWindow)
+	}
 }
 
 func TestConfigLoadInvalidWindow(t *testing.T) {
@@ -54,5 +63,36 @@ func TestConfigLoadInvalidPreAuthRateLimit(t *testing.T) {
 		if err == nil {
 			t.Fatalf("expected error when GARGOYLE_PRE_AUTH_RATE_LIMIT is %q, got nil", invalid)
 		}
+	}
+}
+
+func TestConfigLoadAbuseSettings(t *testing.T) {
+	t.Setenv("GARGOYLE_ABUSE_BLOCK_THRESHOLD", "1.5")
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error when GARGOYLE_ABUSE_BLOCK_THRESHOLD > 1.0, got nil")
+	}
+
+	t.Setenv("GARGOYLE_ABUSE_BLOCK_THRESHOLD", "-0.1")
+	_, err = Load()
+	if err == nil {
+		t.Fatal("expected error when GARGOYLE_ABUSE_BLOCK_THRESHOLD < 0.0, got nil")
+	}
+
+	t.Setenv("GARGOYLE_ABUSE_BLOCK_THRESHOLD", "0.75")
+	t.Setenv("GARGOYLE_ABUSE_SWEEP_THRESHOLD", "25")
+	t.Setenv("GARGOYLE_ABUSE_SWEEP_WINDOW", "15s")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error loading valid abuse config: %v", err)
+	}
+	if cfg.AbuseBlockThreshold != 0.75 {
+		t.Fatalf("expected AbuseBlockThreshold 0.75, got %v", cfg.AbuseBlockThreshold)
+	}
+	if cfg.AbuseSweepThreshold != 25 {
+		t.Fatalf("expected AbuseSweepThreshold 25, got %d", cfg.AbuseSweepThreshold)
+	}
+	if cfg.AbuseSweepWindow != 15*time.Second {
+		t.Fatalf("expected AbuseSweepWindow 15s, got %v", cfg.AbuseSweepWindow)
 	}
 }
