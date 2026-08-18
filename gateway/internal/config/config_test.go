@@ -1,16 +1,15 @@
 package config
 
 import (
-	"os"
 	"testing"
 	"time"
 )
 
 func TestConfigLoadDefaults(t *testing.T) {
-	// Clear relevant env vars
-	os.Unsetenv("GARGOYLE_LISTEN_ADDR")
-	os.Unsetenv("GARGOYLE_RATE_LIMIT_WINDOW")
-	os.Unsetenv("GARGOYLE_PRE_AUTH_RATE_LIMIT")
+	// Safely clear relevant env vars with auto-restoration
+	t.Setenv("GARGOYLE_LISTEN_ADDR", "")
+	t.Setenv("GARGOYLE_RATE_LIMIT_WINDOW", "")
+	t.Setenv("GARGOYLE_PRE_AUTH_RATE_LIMIT", "")
 
 	cfg, err := Load()
 	if err != nil {
@@ -47,5 +46,13 @@ func TestConfigLoadInvalidPreAuthRateLimit(t *testing.T) {
 	_, err := Load()
 	if err == nil {
 		t.Fatal("expected error when GARGOYLE_PRE_AUTH_RATE_LIMIT is negative, got nil")
+	}
+
+	for _, invalid := range []string{"60junk", "60.5", "abc"} {
+		t.Setenv("GARGOYLE_PRE_AUTH_RATE_LIMIT", invalid)
+		_, err = Load()
+		if err == nil {
+			t.Fatalf("expected error when GARGOYLE_PRE_AUTH_RATE_LIMIT is %q, got nil", invalid)
+		}
 	}
 }

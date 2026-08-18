@@ -8,10 +8,12 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
 	"gargoyle/internal/client"
+	"gargoyle/internal/logstore"
 )
 
 type mockLimiter struct {
@@ -20,6 +22,30 @@ type mockLimiter struct {
 
 func (m *mockLimiter) Allow(ctx context.Context, clientID string, limit int) (Result, error) {
 	return m.allowFunc(ctx, clientID, limit)
+}
+
+type mockLogStore struct {
+	mu      sync.Mutex
+	entries []logstore.Entry
+}
+
+func (m *mockLogStore) Write(_ context.Context, entry logstore.Entry) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.entries = append(m.entries, entry)
+	return nil
+}
+
+func (m *mockLogStore) FindRecentByClientID(_ context.Context, _ string, _ int) ([]logstore.Entry, error) {
+	return nil, nil
+}
+
+func (m *mockLogStore) Entries() []logstore.Entry {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	copied := make([]logstore.Entry, len(m.entries))
+	copy(copied, m.entries)
+	return copied
 }
 
 func TestMiddlewareAllowed(t *testing.T) {
@@ -51,7 +77,7 @@ func TestMiddlewareAllowed(t *testing.T) {
 		_, _ = w.Write([]byte("backend response"))
 	})
 
-	mw := Middleware(limiter, logger)(nextHandler)
+	mw := Middleware(limiter, nil, logger)(nextHandler)
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req = req.WithContext(client.NewContext(req.Context(), testClient))
@@ -94,15 +120,17 @@ func TestMiddlewareThrottled(t *testing.T) {
 		},
 	}
 
+	fakeLogStore := &mockLogStore{}
 	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
 	nextCalled := false
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		nextCalled = true
 	})
 
-	mw := Middleware(limiter, logger)(nextHandler)
+	mw := Middleware(limiter, fakeLogStore, logger)(nextHandler)
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test/path", nil)
+	req.RemoteAddr = "192.0.2.1:1234"
 	req = req.WithContext(client.NewContext(req.Context(), testClient))
 	rec := httptest.NewRecorder()
 
@@ -134,6 +162,19 @@ func TestMiddlewareThrottled(t *testing.T) {
 	if resp.Error != "rate limit exceeded" || resp.RetryAfter != 15 {
 		t.Fatalf("unexpected error response body: %+v", resp)
 	}
+
+	// Wait briefly for asynchronous log write
+	time.Sleep(50 * time.Millisecond)
+	entries := fakeLogStore.Entries()
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 log entry recorded, got %d", len(entries))
+	}
+	if entries[0].ClientID != "client-123" || entries[0].Path != "/test/path" || entries[0].IP != "192.0.2.1" {
+		t.Fatalf("unexpected log entry recorded: %+v", entries[0])
+	}
+	if entries[0].Outcome != "rate_limited" || entries[0].Reason != "rate limit exceeded" {
+		t.Fatalf("unexpected log entry outcome/reason: %+v", entries[0])
+	}
 }
 
 func TestMiddlewareFailOpenOnLimiterError(t *testing.T) {
@@ -156,7 +197,7 @@ func TestMiddlewareFailOpenOnLimiterError(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	mw := Middleware(limiter, logger)(nextHandler)
+	mw := Middleware(limiter, nil, logger)(nextHandler)
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req = req.WithContext(client.NewContext(req.Context(), testClient))
@@ -194,7 +235,7 @@ func TestMiddlewareUnlimitedClient(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	mw := Middleware(limiter, logger)(nextHandler)
+	mw := Middleware(limiter, nil, logger)(nextHandler)
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req = req.WithContext(client.NewContext(req.Context(), testClient))

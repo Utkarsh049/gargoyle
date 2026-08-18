@@ -70,6 +70,16 @@ func (s *PostgresStore) CreateClient(ctx context.Context, params NewClientParams
 	return c, nil
 }
 
+// CountClients returns the total number of registered clients in Postgres.
+func (s *PostgresStore) CountClients(ctx context.Context) (int, error) {
+	var count int
+	err := s.pool.QueryRow(ctx, `SELECT COUNT(*) FROM clients`).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("client: counting clients: %w", err)
+	}
+	return count, nil
+}
+
 // scanClient scans a row shaped like clientColumns into a Client,
 // including parsing the stored target_url into a *url.URL.
 func scanClient(row pgx.Row) (*Client, error) {

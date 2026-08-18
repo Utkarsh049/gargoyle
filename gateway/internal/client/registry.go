@@ -69,3 +69,8 @@ func (r *Registry) fromCache(hash string) (*Client, bool) {
 	}
 	return entry.client, true
 }
+
+// CountClients delegates to the store to get the registered client count.
+func (r *Registry) CountClients(ctx context.Context) (int, error) {
+	return r.store.CountClients(ctx)
+}

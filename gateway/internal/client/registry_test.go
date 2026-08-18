@@ -24,6 +24,10 @@ func (f *fakeStore) FindByAPIKeyHash(_ context.Context, hash string) (*Client, e
 	return c, nil
 }
 
+func (f *fakeStore) CountClients(_ context.Context) (int, error) {
+	return len(f.byHash), nil
+}
+
 func mustURL(t *testing.T, raw string) *url.URL {
 	t.Helper()
 	u, err := url.Parse(raw)

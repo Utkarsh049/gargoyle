@@ -7,6 +7,8 @@
 package metrics
 
 import (
+	"context"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -81,4 +83,30 @@ func New(reg prometheus.Registerer) *Metrics {
 			},
 		),
 	}
+}
+
+type decisionKey struct{}
+
+type decisionHolder struct {
+	outcome string
+}
+
+// NewDecisionContext returns a child context carrying a mutable decisionHolder.
+func NewDecisionContext(ctx context.Context) context.Context {
+	return context.WithValue(ctx, decisionKey{}, &decisionHolder{})
+}
+
+// SetDecision records the gateway's decision for the request (e.g. OutcomeAllowed, OutcomeRateLimited).
+func SetDecision(ctx context.Context, outcome string) {
+	if h, ok := ctx.Value(decisionKey{}).(*decisionHolder); ok && h != nil {
+		h.outcome = outcome
+	}
+}
+
+// GetDecision retrieves the gateway decision recorded on ctx, if any.
+func GetDecision(ctx context.Context) string {
+	if h, ok := ctx.Value(decisionKey{}).(*decisionHolder); ok && h != nil {
+		return h.outcome
+	}
+	return ""
 }

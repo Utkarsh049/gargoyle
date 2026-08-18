@@ -93,3 +93,58 @@ func TestPrometheusScrapeEndpoint(t *testing.T) {
 		t.Fatalf("expected gargoyle_active_clients 5 in scrape output, got:\n%s", body)
 	}
 }
+
+func TestMetricsMiddlewarePanicRecovery(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	m := New(reg)
+
+	handler := Middleware(m)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		panic("unexpected nil pointer")
+	}))
+
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("expected panic to propagate")
+		}
+
+		count := testutil.ToFloat64(m.RequestsTotal.WithLabelValues(OutcomeError))
+		if count != 1 {
+			t.Fatalf("expected error counter to be 1 after panic, got %v", count)
+		}
+	}()
+
+	req := httptest.NewRequest(http.MethodGet, "/panic", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+}
+
+func TestMetricsMiddlewareExplicitDecisionOverridesStatus(t *testing.T) {
+	// When an allowed request is forwarded to an upstream backend that returns 401 or 429,
+	// the gateway decision is still OutcomeAllowed (not a gateway rejection).
+	reg := prometheus.NewRegistry()
+	m := New(reg)
+
+	handler := Middleware(m)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		SetDecision(r.Context(), OutcomeAllowed)
+		w.WriteHeader(http.StatusUnauthorized) // Upstream returned 401
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/upstream-auth", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status 401, got %d", rec.Code)
+	}
+
+	allowedCount := testutil.ToFloat64(m.RequestsTotal.WithLabelValues(OutcomeAllowed))
+	if allowedCount != 1 {
+		t.Fatalf("expected outcome %q to be 1, got %v", OutcomeAllowed, allowedCount)
+	}
+
+	unauthCount := testutil.ToFloat64(m.RequestsTotal.WithLabelValues(OutcomeUnauthenticated))
+	if unauthCount != 0 {
+		t.Fatalf("expected outcome %q to be 0, got %v", OutcomeUnauthenticated, unauthCount)
+	}
+}

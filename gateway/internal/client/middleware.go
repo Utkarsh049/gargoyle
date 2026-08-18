@@ -5,6 +5,8 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+
+	"gargoyle/internal/metrics"
 )
 
 // APIKeyHeader is the header clients send their Gargoyle API key in (see
@@ -21,6 +23,7 @@ func Middleware(registry *Registry, logger *slog.Logger) func(http.Handler) http
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			apiKey := r.Header.Get(APIKeyHeader)
 			if apiKey == "" {
+				metrics.SetDecision(r.Context(), metrics.OutcomeUnauthenticated)
 				writeAuthError(w, "missing API key")
 				return
 			}
@@ -30,6 +33,7 @@ func Middleware(registry *Registry, logger *slog.Logger) func(http.Handler) http
 				if !errors.Is(err, ErrNotFound) {
 					logger.ErrorContext(r.Context(), "client: lookup failed", "error", err)
 				}
+				metrics.SetDecision(r.Context(), metrics.OutcomeUnauthenticated)
 				writeAuthError(w, "invalid API key")
 				return
 			}

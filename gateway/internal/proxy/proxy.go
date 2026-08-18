@@ -12,6 +12,7 @@ import (
 	"net/http/httputil"
 
 	"gargoyle/internal/client"
+	"gargoyle/internal/metrics"
 )
 
 // New builds a reverse proxy whose upstream target is resolved per request
@@ -41,12 +42,14 @@ func New(logger *slog.Logger) *httputil.ReverseProxy {
 				return
 			}
 
+			metrics.SetDecision(pr.In.Context(), metrics.OutcomeAllowed)
 			pr.SetURL(c.TargetURL)
 			pr.SetXForwarded()
 			pr.Out.Host = c.TargetURL.Host
 		},
 
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
+			metrics.SetDecision(r.Context(), metrics.OutcomeError)
 			if errors.Is(err, context.Canceled) {
 				// The client disconnected before the upstream responded;
 				// there's no meaningful response to write, so just log it

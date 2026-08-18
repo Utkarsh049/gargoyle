@@ -1,14 +1,18 @@
 package ratelimit
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"math"
 	"net"
 	"net/http"
 	"strconv"
+	"time"
 
 	"gargoyle/internal/client"
+	"gargoyle/internal/logstore"
+	"gargoyle/internal/metrics"
 )
 
 type rateLimitErrorResponse struct {
@@ -19,10 +23,13 @@ type rateLimitErrorResponse struct {
 // Middleware enforces rate limits per client based on each client's configured
 // limit from Postgres (see PROJECT.md §5).
 //
+// When a client exceeds their rate limit, it logs the event to Postgres (via logStore)
+// as part of Phase 5 per-client decision logging.
+//
 // It runs after client.Middleware in the router stack so client.FromContext is
 // guaranteed to succeed. If Redis is down or returns an error, it logs the failure
 // and fails open so downstream services remain accessible.
-func Middleware(limiter Limiter, logger *slog.Logger) func(http.Handler) http.Handler {
+func Middleware(limiter Limiter, logStore logstore.Store, logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			c, ok := client.FromContext(r.Context())
@@ -60,6 +67,7 @@ func Middleware(limiter Limiter, logger *slog.Logger) func(http.Handler) http.Ha
 			w.Header().Set("X-RateLimit-Reset", strconv.Itoa(resetSec))
 
 			if !res.Allowed {
+				metrics.SetDecision(r.Context(), metrics.OutcomeRateLimited)
 				w.Header().Set("Retry-After", strconv.Itoa(resetSec))
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusTooManyRequests)
@@ -75,6 +83,28 @@ func Middleware(limiter Limiter, logger *slog.Logger) func(http.Handler) http.Ha
 					"limit", res.Limit,
 					"retry_after_seconds", resetSec,
 				)
+
+				if logStore != nil {
+					go func(clientID, ip, path string) {
+						ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+						defer cancel()
+
+						if err := logStore.Write(ctx, logstore.Entry{
+							ClientID:   clientID,
+							Timestamp:  time.Now().UTC(),
+							IP:         ip,
+							Path:       path,
+							Outcome:    metrics.OutcomeRateLimited,
+							AbuseScore: 0.0,
+							Reason:     "rate limit exceeded",
+						}); err != nil {
+							logger.ErrorContext(ctx, "logstore: failed to record rate-limited request",
+								"client_id", clientID,
+								"error", err,
+							)
+						}
+					}(c.ID, extractClientIP(r.RemoteAddr), r.URL.Path)
+				}
 				return
 			}
 
@@ -116,6 +146,7 @@ func PreAuthMiddleware(limiter Limiter, limit int, logger *slog.Logger) func(htt
 			}
 
 			if !res.Allowed {
+				metrics.SetDecision(r.Context(), metrics.OutcomeRateLimited)
 				w.Header().Set("Retry-After", strconv.Itoa(resetSec))
 				w.Header().Set("X-RateLimit-Limit", strconv.Itoa(res.Limit))
 				w.Header().Set("X-RateLimit-Remaining", "0")
