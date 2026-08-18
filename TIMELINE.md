@@ -10,7 +10,7 @@ Ten phases, ordered so that every phase produces something runnable and demoable
 - [x] Phase 2 — Client registry (multi-tenancy)
 - [x] Phase 3 — Rate limiting
 - [x] Phase 4 — Metrics exposition
-- [ ] Phase 5 — Per-client logging
+- [x] Phase 5 — Per-client logging
 - [ ] Phase 6 — Rule-based abuse detection
 - [ ] Phase 7 — Traffic simulator
 - [ ] Phase 8 — ML abuse scoring (optional layer)

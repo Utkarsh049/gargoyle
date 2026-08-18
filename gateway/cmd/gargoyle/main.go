@@ -1,7 +1,8 @@
-// Command gargoyle is the Gargoyle gateway process. As of Phase 4, it
+// Command gargoyle is the Gargoyle gateway process. As of Phase 5, it
 // resolves each request's API key to a registered client (Postgres,
 // cached in memory), enforces per-client rate limits (Redis sliding window),
-// exposes Prometheus metrics, and forwards allowed requests to the client's own target_url.
+// exposes Prometheus metrics, logs blocked decisions to Postgres (request_logs),
+// and forwards allowed requests to the client's own target_url.
 package main
 
 import (
@@ -22,6 +23,7 @@ import (
 	"gargoyle/internal/config"
 	"gargoyle/internal/db"
 	"gargoyle/internal/httpserver"
+	"gargoyle/internal/logstore"
 	"gargoyle/internal/metrics"
 	"gargoyle/internal/proxy"
 	"gargoyle/internal/ratelimit"
@@ -67,6 +69,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 
 	registry := client.NewRegistry(client.NewPostgresStore(pool), cfg.ClientCacheTTL)
 	limiter := ratelimit.NewRedisLimiter(rdb, cfg.RateLimitWindow)
+	logStore := logstore.NewPostgresStore(pool)
 	promMetrics := metrics.New(prometheus.DefaultRegisterer)
 	rp := proxy.New(logger)
 
@@ -91,7 +94,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		// to protect the client registry and Postgres against unauthenticated DoS/key-stuffing floods.
 		r.Use(ratelimit.PreAuthMiddleware(limiter, cfg.PreAuthRateLimit, logger))
 		r.Use(client.Middleware(registry, logger))
-		r.Use(ratelimit.Middleware(limiter, logger))
+		r.Use(ratelimit.Middleware(limiter, logStore, logger))
 		r.Handle("/*", rp)
 	})
 
