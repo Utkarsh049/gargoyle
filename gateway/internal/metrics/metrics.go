@@ -1,9 +1,9 @@
 // Package metrics defines Gargoyle's aggregate Prometheus metrics and
-// HTTP measurement middleware (see PROJECT.md §4).
+// HTTP measurement middleware.
 //
 // Metrics are strictly aggregate (labelled by outcome, not client ID)
 // to prevent time-series cardinality blowup. High-cardinality per-client
-// logs are persisted to Postgres in Phase 5 instead.
+// logs are persisted to Postgres instead.
 package metrics
 
 import (

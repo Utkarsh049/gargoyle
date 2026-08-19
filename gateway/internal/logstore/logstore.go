@@ -1,5 +1,4 @@
 // Package logstore provides per-client decision audit logging to Postgres
-// (see PROJECT.md §1, §4, and §9).
 //
 // Unlike Prometheus metrics (which are aggregate), request_logs records
 // high-cardinality details (IP, path, reason, timestamp) for blocked or

@@ -19,7 +19,7 @@ type SweepTracker interface {
 
 // EndpointSweepRule detects directory busting, automated scraping sweeps,
 // and path enumeration attacks where an IP or client hits many distinct
-// endpoints in rapid succession (see PROJECT.md §6).
+// endpoints in rapid succession.
 type EndpointSweepRule struct {
 	tracker   SweepTracker
 	threshold int

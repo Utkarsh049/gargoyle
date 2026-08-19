@@ -6,7 +6,7 @@ import (
 )
 
 // Engine evaluates incoming requests against registered heuristic rules
-// and scoring models to determine an abuse decision (see PROJECT.md §6).
+// and scoring models to determine an abuse decision.
 type Engine struct {
 	rules          []Rule
 	blockThreshold float64

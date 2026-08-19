@@ -1,5 +1,5 @@
-// Command gargoyle is the Gargoyle gateway process. As of Phase 6, it
-// resolves each request's API key to a registered client (Postgres,
+// Command gargoyle is the Gargoyle gateway process.
+// It resolves each request's API key to a registered client (Postgres,
 // cached in memory), enforces per-client rate limits (Redis sliding window),
 // evaluates rule-based abuse heuristics (header anomalies, endpoint sweeps, timing pacing),
 // exposes Prometheus metrics, logs blocked decisions to Postgres (request_logs),
@@ -76,7 +76,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	promMetrics := metrics.New(prometheus.DefaultRegisterer)
 	rp := proxy.New(logger)
 
-	// Build abuse detection engine and heuristic rules (Phase 6)
+	// Build abuse detection engine and heuristic rules
 	sweepTracker := rules.NewRedisSweepTracker(rdb)
 	timingTracker := rules.NewRedisTimingTracker(rdb)
 	abuseEngine := abuse.NewEngine(
@@ -136,8 +136,7 @@ func handleHealthz(w http.ResponseWriter, r *http.Request) {
 
 // requestLogger is a small structured-logging middleware built on slog,
 // used instead of Chi's default text logger so that request logs are
-// machine-parseable from day one (they'll sit alongside Prometheus metrics
-// and Postgres request logs added in later phases).
+// machine-parseable (sitting alongside Prometheus metrics and Postgres request logs).
 func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

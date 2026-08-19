@@ -21,10 +21,10 @@ type rateLimitErrorResponse struct {
 }
 
 // Middleware enforces rate limits per client based on each client's configured
-// limit from Postgres (see PROJECT.md §5).
+// limit from Postgres.
 //
 // When a client exceeds their rate limit, it logs the event to Postgres (via logStore)
-// as part of Phase 5 per-client decision logging.
+// for per-client decision auditing.
 //
 // It runs after client.Middleware in the router stack so client.FromContext is
 // guaranteed to succeed. If Redis is down or returns an error, it logs the failure

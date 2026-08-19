@@ -56,8 +56,7 @@ const insertClientQuery = `
 	VALUES ($1, $2, $3, $4, $5)
 	RETURNING ` + clientColumns
 
-// CreateClient inserts a new client record. It's used by cmd/gargoylectl
-// today, ahead of the HTTP admin API that lands in Phase 9.
+// CreateClient inserts a new client record.
 func (s *PostgresStore) CreateClient(ctx context.Context, params NewClientParams) (*Client, error) {
 	row := s.pool.QueryRow(ctx, insertClientQuery,
 		params.Name, params.APIKeyHash, params.TargetURL, params.RateLimit, params.PlanTier,

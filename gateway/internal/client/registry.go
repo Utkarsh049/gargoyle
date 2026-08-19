@@ -8,7 +8,7 @@ import (
 
 // Registry resolves a raw API key (as received on the wire) to a Client,
 // caching positive lookups in memory for ttl so the hot request path
-// doesn't hit Postgres on every single request (see PROJECT.md §8).
+// doesn't hit Postgres on every single request.
 type Registry struct {
 	store Store
 	ttl   time.Duration
@@ -38,8 +38,7 @@ func NewRegistry(store Store, ttl time.Duration) *Registry {
 // (typos, credential-stuffing attempts) would otherwise grow the cache
 // without bound since every distinct bad key is a new map entry; sending
 // every miss to the store keeps this cache's memory bounded by the number
-// of real clients. Throttling repeated invalid attempts is Phase 3's job
-// (rate limiting), not this cache's.
+// of real clients.
 func (r *Registry) Lookup(ctx context.Context, apiKey string) (*Client, error) {
 	hash := HashAPIKey(apiKey)
 

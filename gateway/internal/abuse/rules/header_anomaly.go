@@ -9,7 +9,7 @@ import (
 
 // HeaderAnomalyRule inspects HTTP request headers for missing User-Agents,
 // automated script signatures (curl, python-requests, scrapers, scanners),
-// headless browser markers, and inconsistent browser header sets (see PROJECT.md §6).
+// headless browser markers, and inconsistent browser header sets.
 type HeaderAnomalyRule struct{}
 
 // NewHeaderAnomalyRule creates a new HeaderAnomalyRule.

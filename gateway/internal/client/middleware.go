@@ -10,7 +10,7 @@ import (
 )
 
 // APIKeyHeader is the header clients send their Gargoyle API key in (see
-// PROJECT.md §7 — the header-based identification pattern).
+// the header-based identification pattern).
 const APIKeyHeader = "X-Gargoyle-Key"
 
 // Middleware extracts the caller's API key, resolves it to a Client via

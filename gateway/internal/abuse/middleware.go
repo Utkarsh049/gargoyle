@@ -20,7 +20,7 @@ type abuseErrorResponse struct {
 }
 
 // Middleware runs heuristic and ML abuse detection rules on incoming
-// authenticated requests after rate limiting (see PROJECT.md §2, §6).
+// authenticated requests after rate limiting.
 //
 // Requests with an abuse score meeting or exceeding the block threshold are
 // rejected immediately with 403 Forbidden, recorded to Prometheus metrics,

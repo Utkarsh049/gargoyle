@@ -1,7 +1,6 @@
 // Package ratelimit implements Gargoyle's sliding-window rate limiter.
 // Each client has a configured rate limit (requests per minute) defined in
-// Postgres, and limits are enforced atomically per client_id using Redis
-// sorted sets (see PROJECT.md §5 and §9).
+// Postgres, and limits are enforced atomically per client_id using Redis sorted sets.
 package ratelimit
 
 import (

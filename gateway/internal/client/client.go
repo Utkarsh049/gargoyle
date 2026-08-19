@@ -2,7 +2,7 @@
 // incoming API key to the registered tenant it belongs to (name, target
 // backend, rate limit, plan tier), backed by Postgres and fronted by a
 // short-TTL in-memory cache so the hot request path doesn't hit the
-// database on every request (see PROJECT.md §2 and §8).
+// database on every request.
 package client
 
 import (

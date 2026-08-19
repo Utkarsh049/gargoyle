@@ -1,6 +1,6 @@
 // Command gargoylectl is a small operator CLI for managing Gargoyle client
-// records directly against Postgres, ahead of the HTTP admin API that
-// lands in Phase 9. Today its only job is create-client: generate a fresh
+// records directly against Postgres, ahead of the HTTP admin API.
+// Its only job is create-client: generate a fresh
 // API key, persist its hash, and print the plaintext key exactly once.
 package main
 

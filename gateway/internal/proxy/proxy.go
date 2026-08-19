@@ -1,7 +1,6 @@
 // Package proxy builds the reverse proxy that forwards allowed requests to
-// a client's backend. Since Phase 2, there is no single fixed target: the
-// destination is resolved per request from the Client attached to the
-// request context by client.Middleware (see PROJECT.md §2, §7).
+// a client's backend. The destination is resolved per request from the Client
+// attached to the request context by client.Middleware.
 package proxy
 
 import (

@@ -22,7 +22,7 @@ type TimingTracker interface {
 //
 // Human traffic naturally contains high timing jitter (standard deviation > 100ms),
 // whereas automated scripts with fixed loops/sleeps exhibit near-zero interval
-// variance (see PROJECT.md §6).
+// variance.
 type RequestSequencingRule struct {
 	tracker        TimingTracker
 	minSamples     int
