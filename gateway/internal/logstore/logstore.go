@@ -1,8 +1,4 @@
-// Package logstore provides per-client decision audit logging to Postgres
-//
-// Unlike Prometheus metrics (which are aggregate), request_logs records
-// high-cardinality details (IP, path, reason, timestamp) for blocked or
-// flagged requests without causing metric cardinality blowup.
+// Package logstore provides decision audit logging to PostgreSQL.
 package logstore
 
 import (
@@ -10,7 +6,7 @@ import (
 	"time"
 )
 
-// Entry represents a single decision log record for a client request.
+// Entry represents a single decision audit log record.
 type Entry struct {
 	ID         string
 	ClientID   string

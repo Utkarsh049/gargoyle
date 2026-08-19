@@ -1,6 +1,4 @@
-// Package db manages the Postgres connection pool and schema migrations
-// shared by every Gargoyle process that needs persistence (the gateway
-// itself, and operator tools like cmd/gargoylectl).
+// Package db manages Postgres connection pooling and schema migrations.
 package db
 
 import (
@@ -11,10 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Connect opens a connection pool to Postgres and verifies connectivity
-// with a bounded ping before returning. Failing fast here means a bad
-// connection string surfaces as a clear startup error instead of a
-// confusing failure on the first incoming request.
+// Connect creates a verified Postgres connection pool.
 func Connect(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {

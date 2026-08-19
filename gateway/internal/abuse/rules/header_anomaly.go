@@ -7,12 +7,10 @@ import (
 	"gargoyle/internal/abuse"
 )
 
-// HeaderAnomalyRule inspects HTTP request headers for missing User-Agents,
-// automated script signatures (curl, python-requests, scrapers, scanners),
-// headless browser markers, and inconsistent browser header sets.
+// HeaderAnomalyRule checks for missing or suspicious User-Agents and automated tool signatures.
 type HeaderAnomalyRule struct{}
 
-// NewHeaderAnomalyRule creates a new HeaderAnomalyRule.
+// NewHeaderAnomalyRule creates a HeaderAnomalyRule.
 func NewHeaderAnomalyRule() *HeaderAnomalyRule {
 	return &HeaderAnomalyRule{}
 }

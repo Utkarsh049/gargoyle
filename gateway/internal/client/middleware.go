@@ -9,15 +9,10 @@ import (
 	"gargoyle/internal/metrics"
 )
 
-// APIKeyHeader is the header clients send their Gargoyle API key in (see
-// the header-based identification pattern).
+// APIKeyHeader is the header containing the client's API key.
 const APIKeyHeader = "X-Gargoyle-Key"
 
-// Middleware extracts the caller's API key, resolves it to a Client via
-// registry, and attaches the Client to the request context via
-// NewContext. Requests with a missing or unrecognized key are rejected
-// with 401 before reaching anything downstream — every handler behind this
-// middleware can assume client.FromContext will succeed.
+// Middleware authenticates requests by API key and attaches the resolved Client to context.
 func Middleware(registry *Registry, logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

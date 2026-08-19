@@ -1,7 +1,4 @@
-// Package httpserver provides a small helper for running an *http.Server
-// with graceful shutdown on SIGINT/SIGTERM. It exists so that "how Gargoyle
-// starts and stops" is written once and reused by every binary in cmd/,
-// rather than each main.go reimplementing signal handling.
+// Package httpserver provides lifecycle management for HTTP servers with graceful shutdown.
 package httpserver
 
 import (
@@ -15,10 +12,7 @@ import (
 	"time"
 )
 
-// Run starts srv, blocks until the process receives SIGINT or SIGTERM (or
-// the given context is canceled), then attempts a graceful shutdown bounded
-// by shutdownTimeout. It returns a non-nil error only for failures that
-// aren't the expected "server closed" outcome of a graceful shutdown.
+// Run starts the server and gracefully shuts down on SIGINT/SIGTERM or context cancellation.
 func Run(ctx context.Context, srv *http.Server, shutdownTimeout time.Duration, logger *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

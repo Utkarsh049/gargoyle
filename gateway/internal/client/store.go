@@ -5,13 +5,10 @@ import (
 	"errors"
 )
 
-// ErrNotFound is returned by Store and Registry implementations when no
-// client matches the given lookup key.
+// ErrNotFound is returned when no client matches the query.
 var ErrNotFound = errors.New("client: not found")
 
-// Store is the persistence interface for client records. Production code
-// uses PostgresStore; tests can supply an in-memory fake without needing a
-// real database.
+// Store defines persistence operations for client records.
 type Store interface {
 	FindByAPIKeyHash(ctx context.Context, hash string) (*Client, error)
 	CountClients(ctx context.Context) (int, error)

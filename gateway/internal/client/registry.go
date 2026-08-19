@@ -6,9 +6,7 @@ import (
 	"time"
 )
 
-// Registry resolves a raw API key (as received on the wire) to a Client,
-// caching positive lookups in memory for ttl so the hot request path
-// doesn't hit Postgres on every single request.
+// Registry resolves raw API keys to Client instances with TTL-based caching.
 type Registry struct {
 	store Store
 	ttl   time.Duration
@@ -22,7 +20,7 @@ type cachedEntry struct {
 	expiresAt time.Time
 }
 
-// NewRegistry builds a Registry over store, caching hits for ttl.
+// NewRegistry constructs a Registry backed by store with an in-memory cache TTL.
 func NewRegistry(store Store, ttl time.Duration) *Registry {
 	return &Registry{
 		store: store,
@@ -31,14 +29,7 @@ func NewRegistry(store Store, ttl time.Duration) *Registry {
 	}
 }
 
-// Lookup resolves apiKey to its Client, returning ErrNotFound if the key
-// doesn't match any registered client.
-//
-// Only successful lookups are cached. An unbounded stream of invalid keys
-// (typos, credential-stuffing attempts) would otherwise grow the cache
-// without bound since every distinct bad key is a new map entry; sending
-// every miss to the store keeps this cache's memory bounded by the number
-// of real clients.
+// Lookup resolves an API key to a Client, returning ErrNotFound on cache miss and store miss.
 func (r *Registry) Lookup(ctx context.Context, apiKey string) (*Client, error) {
 	hash := HashAPIKey(apiKey)
 

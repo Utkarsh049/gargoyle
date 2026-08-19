@@ -11,23 +11,10 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// keyPrefix scopes all Gargoyle rate-limit keys in Redis.
+// keyPrefix scopes rate-limit keys in Redis.
 const keyPrefix = "gargoyle:ratelimit:"
 
-// slidingWindowScript is an atomic Lua script that implements a sliding window
-// rate limiter using Redis sorted sets (ZSET).
-//
-// KEYS[1]: rate limit key for the tenant (e.g. "gargoyle:ratelimit:<client_id>")
-// ARGV[1]: current timestamp in milliseconds
-// ARGV[2]: sliding window duration in milliseconds
-// ARGV[3]: max allowed requests in the window
-// ARGV[4]: unique member identifier for this request
-//
-// Returns:
-//
-//	[1] allowed (1 for true, 0 for false)
-//	[2] remaining requests in the current window
-//	[3] reset duration in seconds
+// slidingWindowScript atomically checks and updates rate limits using Redis sorted sets.
 var slidingWindowScript = redis.NewScript(`
 local key = KEYS[1]
 local now = tonumber(ARGV[1])
@@ -71,7 +58,7 @@ type RedisLimiter struct {
 	window time.Duration
 }
 
-// NewRedisLimiter constructs a RedisLimiter with the specified window (minimum 1ms).
+// NewRedisLimiter creates a RedisLimiter with the specified window duration.
 func NewRedisLimiter(rdb *redis.Client, window time.Duration) *RedisLimiter {
 	if window < time.Millisecond {
 		window = time.Millisecond

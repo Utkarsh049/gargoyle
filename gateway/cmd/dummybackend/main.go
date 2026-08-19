@@ -1,10 +1,4 @@
-// Command dummybackend is a throwaway HTTP server used to prove Gargoyle's
-// reverse proxy forwards requests untouched. It is a development/demo
-// utility only — it is not one of the four responsibilities of the Go
-//
-// It echoes back everything it received (method, path, headers, body) as
-// JSON, which makes it easy to visually confirm that what arrives here
-// matches what was sent to Gargoyle.
+// Command dummybackend is a simple echo HTTP server used as a test upstream.
 package main
 
 import (

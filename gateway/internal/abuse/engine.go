@@ -5,14 +5,13 @@ import (
 	"math"
 )
 
-// Engine evaluates incoming requests against registered heuristic rules
-// and scoring models to determine an abuse decision.
+// Engine evaluates incoming requests against registered heuristic rules.
 type Engine struct {
 	rules          []Rule
 	blockThreshold float64
 }
 
-// NewEngine builds an Engine with the given rules and blocking score threshold.
+// NewEngine creates an Engine with the given rules and blocking threshold.
 func NewEngine(blockThreshold float64, rules ...Rule) *Engine {
 	if blockThreshold <= 0.0 || blockThreshold > 1.0 {
 		blockThreshold = 0.8
@@ -23,18 +22,14 @@ func NewEngine(blockThreshold float64, rules ...Rule) *Engine {
 	}
 }
 
-// AddRule registers an additional heuristic rule or model into the engine.
+// AddRule registers an additional rule into the engine.
 func (e *Engine) AddRule(rule Rule) {
 	if rule != nil {
 		e.rules = append(e.rules, rule)
 	}
 }
 
-// Evaluate runs all active heuristic rules against the request context and
-// returns an aggregated decision.
-//
-// If any rule dictates an immediate block or produces a risk score exceeding
-// blockThreshold, the request is blocked.
+// Evaluate runs all active rules against the request and returns an aggregated decision.
 func (e *Engine) Evaluate(ctx context.Context, req *RequestContext) (Decision, error) {
 	if len(e.rules) == 0 {
 		return Decision{Action: ActionAllow, Score: 0.0}, nil

@@ -19,12 +19,7 @@ type abuseErrorResponse struct {
 	Score  float64 `json:"score,omitempty"`
 }
 
-// Middleware runs heuristic and ML abuse detection rules on incoming
-// authenticated requests after rate limiting.
-//
-// Requests with an abuse score meeting or exceeding the block threshold are
-// rejected immediately with 403 Forbidden, recorded to Prometheus metrics,
-// and asynchronously logged to Postgres (request_logs table).
+// Middleware evaluates requests against abuse heuristics, rejecting violations with 403 Forbidden.
 func Middleware(engine *Engine, logStore logstore.Store, promMetrics *metrics.Metrics, logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -8,12 +8,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// PostgresStore implements Store backed by the `request_logs` table in Postgres.
+// PostgresStore implements Store backed by PostgreSQL.
 type PostgresStore struct {
 	pool *pgxpool.Pool
 }
 
-// NewPostgresStore builds a PostgresStore over a pgx connection pool.
+// NewPostgresStore creates a PostgresStore over a connection pool.
 func NewPostgresStore(pool *pgxpool.Pool) *PostgresStore {
 	return &PostgresStore{pool: pool}
 }

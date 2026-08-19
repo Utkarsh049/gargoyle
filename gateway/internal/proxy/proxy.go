@@ -1,6 +1,4 @@
-// Package proxy builds the reverse proxy that forwards allowed requests to
-// a client's backend. The destination is resolved per request from the Client
-// attached to the request context by client.Middleware.
+// Package proxy provides reverse proxying to client upstream backends.
 package proxy
 
 import (
@@ -14,30 +12,14 @@ import (
 	"gargoyle/internal/metrics"
 )
 
-// New builds a reverse proxy whose upstream target is resolved per request
-// from client.FromContext.
-//
-// The returned proxy:
-//   - forwards to the resolved client's TargetURL, preserving path and
-//     query string
-//   - sets the Host header to the target's host, so name-based virtual
-//     hosting on the upstream works as expected
-//   - logs and returns 502 Bad Gateway on upstream failures, instead of
-//     letting the default ReverseProxy behavior leak a bare connection
-//     error to the client
+// New constructs a reverse proxy that dynamically forwards requests
+// to the target URL of the authenticated client in the request context.
 func New(logger *slog.Logger) *httputil.ReverseProxy {
 	return &httputil.ReverseProxy{
 		Rewrite: func(pr *httputil.ProxyRequest) {
 			c, ok := client.FromContext(pr.In.Context())
 			if !ok {
-				// Unreachable in normal operation: client.Middleware runs
-				// on every route this proxy is mounted behind, and it
-				// rejects requests with 401 before they ever get here. If
-				// this fires, it's a wiring bug, not a client error — log
-				// loudly and leave the outgoing request untouched so it
-				// fails fast (empty scheme/host) rather than silently
-				// going somewhere unintended.
-				logger.ErrorContext(pr.In.Context(), "proxy: no client resolved in request context")
+				logger.ErrorContext(pr.In.Context(), "proxy: no client in request context")
 				return
 			}
 
@@ -50,9 +32,6 @@ func New(logger *slog.Logger) *httputil.ReverseProxy {
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			metrics.SetDecision(r.Context(), metrics.OutcomeError)
 			if errors.Is(err, context.Canceled) {
-				// The client disconnected before the upstream responded;
-				// there's no meaningful response to write, so just log it
-				// quietly.
 				logger.WarnContext(r.Context(), "proxy: client canceled request", "path", r.URL.Path)
 				return
 			}

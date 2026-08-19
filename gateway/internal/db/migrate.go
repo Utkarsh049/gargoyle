@@ -9,9 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// migrationsFS embeds every .sql file so the binary is self-contained —
-// there's no separate migrations directory to ship or mount alongside it.
-//
 //go:embed migrations/*.sql
 var migrationsFS embed.FS
 
@@ -22,15 +19,7 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 );
 `
 
-// Migrate applies every embedded migration that hasn't already been
-// recorded in schema_migrations, in filename order (hence the numeric
-// prefixes like 0001_). Each migration's DDL and its bookkeeping insert
-// run in a single transaction, so a failed migration is never left
-// half-applied and unrecorded.
-//
-// This is deliberately a minimal, dependency-free migration runner rather
-// than a full tool like golang-migrate — Gargoyle's schema needs are small
-// and this keeps startup self-contained with no extra binary or CLI step.
+// Migrate executes all pending embedded SQL migrations in order within transactions.
 func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	if _, err := pool.Exec(ctx, createSchemaMigrationsTableSQL); err != nil {
 		return fmt.Errorf("db: creating schema_migrations table: %w", err)
