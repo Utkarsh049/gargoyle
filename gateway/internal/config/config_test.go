@@ -1,6 +1,8 @@
 package config
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -94,5 +96,40 @@ func TestConfigLoadAbuseSettings(t *testing.T) {
 	}
 	if cfg.AbuseSweepWindow != 15*time.Second {
 		t.Fatalf("expected AbuseSweepWindow 15s, got %v", cfg.AbuseSweepWindow)
+	}
+}
+
+func TestParseEnvFile(t *testing.T) {
+	tempDir := t.TempDir()
+	envPath := filepath.Join(tempDir, ".env")
+
+	content := `
+# Comment line
+TEST_GARGOYLE_VAR1=hello
+TEST_GARGOYLE_VAR2="quoted_val"
+TEST_GARGOYLE_VAR3='single_quoted'
+INVALID_LINE_NO_EQUALS
+`
+	if err := os.WriteFile(envPath, []byte(content), 0600); err != nil {
+		t.Fatalf("failed to write test .env: %v", err)
+	}
+
+	if err := parseEnvFile(envPath); err != nil {
+		t.Fatalf("parseEnvFile failed: %v", err)
+	}
+
+	if val := os.Getenv("TEST_GARGOYLE_VAR1"); val != "hello" {
+		t.Fatalf("expected hello, got %q", val)
+	}
+	if val := os.Getenv("TEST_GARGOYLE_VAR2"); val != "quoted_val" {
+		t.Fatalf("expected quoted_val, got %q", val)
+	}
+	if val := os.Getenv("TEST_GARGOYLE_VAR3"); val != "single_quoted" {
+		t.Fatalf("expected single_quoted, got %q", val)
+	}
+
+	// Non-existent file should return error
+	if err := parseEnvFile(filepath.Join(tempDir, "nonexistent")); err == nil {
+		t.Fatal("expected error for nonexistent file, got nil")
 	}
 }

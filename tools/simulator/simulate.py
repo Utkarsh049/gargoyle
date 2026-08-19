@@ -358,14 +358,43 @@ def run_simulator(args: argparse.Namespace) -> None:
     print("True labels breakdown:", label_summary)
 
 
+def load_dotenv() -> None:
+    """Discovers and loads key-value pairs from .env in current or parent directories."""
+    current = os.path.abspath(os.getcwd())
+    for _ in range(5):
+        env_file = os.path.join(current, ".env")
+        if os.path.isfile(env_file):
+            try:
+                with open(env_file, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line or line.startswith("#"):
+                            continue
+                        if "=" in line:
+                            k, v = line.split("=", 1)
+                            k, v = k.strip(), v.strip()
+                            if (v.startswith('"') and v.endswith('"')) or (v.startswith("'") and v.endswith("'")):
+                                v = v[1:-1]
+                            if k and k not in os.environ and v:
+                                os.environ[k] = v
+            except Exception:
+                pass
+            return
+        parent = os.path.dirname(current)
+        if parent == current:
+            break
+        current = parent
+
+
 def parse_args() -> argparse.Namespace:
+    load_dotenv()
     parser = argparse.ArgumentParser(
         description="Gargoyle Traffic Simulator & Dataset Generator",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
         "--target-url",
-        default=os.getenv("GARGOYLE_TARGET_URL", DEFAULT_TARGET_URL),
+        default=os.getenv("GARGOYLE_TARGET_URL", os.getenv("GARGOYLE_LISTEN_ADDR", DEFAULT_TARGET_URL)),
         help="Base URL of Gargoyle gateway",
     )
     parser.add_argument(

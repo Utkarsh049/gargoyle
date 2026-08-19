@@ -5,9 +5,13 @@
 package config
 
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 )
 
@@ -63,10 +67,12 @@ type Config struct {
 	ShutdownTimeout time.Duration
 }
 
-// Load reads configuration from environment variables, applying sane
-// defaults for anything not set, and returns an error if the resulting
-// configuration is invalid.
+var loadOnce sync.Once
+
+// Load reads configuration from environment variables and local .env files,
+// applying defaults for anything not set.
 func Load() (*Config, error) {
+	loadOnce.Do(loadDotEnv)
 	clientCacheTTL, err := getDuration("GARGOYLE_CLIENT_CACHE_TTL", 30*time.Second)
 	if err != nil {
 		return nil, err
@@ -194,3 +200,61 @@ func getDuration(key string, fallback time.Duration) (time.Duration, error) {
 	}
 	return d, nil
 }
+
+func loadDotEnv() {
+	dir, err := os.Getwd()
+	if err != nil {
+		return
+	}
+
+	for i := 0; i < 5; i++ {
+		target := filepath.Join(dir, ".env")
+		if info, err := os.Stat(target); err == nil && !info.IsDir() {
+			_ = parseEnvFile(target)
+			return
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+}
+
+func parseEnvFile(path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		key, val, found := strings.Cut(line, "=")
+		if !found {
+			continue
+		}
+
+		key = strings.TrimSpace(key)
+		val = strings.TrimSpace(val)
+
+		if len(val) >= 2 && ((val[0] == '"' && val[len(val)-1] == '"') || (val[0] == '\'' && val[len(val)-1] == '\'')) {
+			val = val[1 : len(val)-1]
+		}
+
+		if _, exists := os.LookupEnv(key); !exists && val != "" {
+			_ = os.Setenv(key, val)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("config: reading %s: %w", path, err)
+	}
+	return nil
+}
+
