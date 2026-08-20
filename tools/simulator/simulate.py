@@ -389,6 +389,17 @@ def load_dotenv() -> None:
         current = parent
 
 
+def positive_int(value: str) -> int:
+    """Validator for strictly positive integers in CLI arguments."""
+    try:
+        ivalue = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"Invalid integer value: {value!r}")
+    if ivalue <= 0:
+        raise argparse.ArgumentTypeError(f"Number of requests must be a positive integer, got {ivalue}")
+    return ivalue
+
+
 def parse_args() -> argparse.Namespace:
     load_dotenv()
     parser = argparse.ArgumentParser(
@@ -423,9 +434,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "-n", "--requests",
-        type=int,
+        type=positive_int,
         default=100,
-        help="Total number of requests to generate",
+        help="Total number of requests to generate (must be positive integer)",
     )
     parser.add_argument(
         "-o", "--output",
