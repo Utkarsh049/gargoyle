@@ -238,8 +238,8 @@ class TrafficGenerator:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)",
             "Accept": "application/json",
         }
-        # Robotic near-zero variance pacing (exact 20ms interval)
-        delay = 0.020
+        # Robotic near-zero variance pacing (uniform interval to trigger sequencing rule)
+        delay = float(os.getenv("GARGOYLE_RATE_PROBE_DELAY", "0.025"))
 
         return "GET", url, headers, None, "rate_probe", delay
 
@@ -330,7 +330,10 @@ def run_simulator(args: argparse.Namespace) -> None:
                 source_identifier=args.source_id,
                 method=method,
                 endpoint=endpoint_path,
-                headers=headers,
+                headers={
+                    k: "[REDACTED]" if k.lower() == DEFAULT_HEADER_KEY.lower() else v
+                    for k, v in headers.items()
+                },
                 status_code=status_code,
                 latency_ms=latency_ms,
                 true_label=true_label,
@@ -386,6 +389,17 @@ def load_dotenv() -> None:
         current = parent
 
 
+def positive_int(value: str) -> int:
+    """Validator for strictly positive integers in CLI arguments."""
+    try:
+        ivalue = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"Invalid integer value: {value!r}")
+    if ivalue <= 0:
+        raise argparse.ArgumentTypeError(f"Number of requests must be a positive integer, got {ivalue}")
+    return ivalue
+
+
 def parse_args() -> argparse.Namespace:
     load_dotenv()
     parser = argparse.ArgumentParser(
@@ -394,7 +408,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--target-url",
-        default=os.getenv("GARGOYLE_TARGET_URL", os.getenv("GARGOYLE_LISTEN_ADDR", DEFAULT_TARGET_URL)),
+        default=os.getenv("GARGOYLE_TARGET_URL") or DEFAULT_TARGET_URL,
         help="Base URL of Gargoyle gateway",
     )
     parser.add_argument(
@@ -420,9 +434,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "-n", "--requests",
-        type=int,
+        type=positive_int,
         default=100,
-        help="Total number of requests to generate",
+        help="Total number of requests to generate (must be positive integer)",
     )
     parser.add_argument(
         "-o", "--output",

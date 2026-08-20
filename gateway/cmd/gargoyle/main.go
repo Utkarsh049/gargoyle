@@ -83,6 +83,14 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		rules.NewRequestSequencingRule(timingTracker),
 	)
 
+	// ML Abuse Scorer (looks for abuse_model.onnx)
+	if mlScorer, err := abuse.NewMLScorer(cfg.ONNXModelPath, cfg.MLScoreThreshold); err != nil {
+		logger.InfoContext(ctx, "gargoyle: ML scoring disabled, running rules-only", "reason", err.Error())
+	} else {
+		abuseEngine.AddRule(mlScorer)
+		logger.InfoContext(ctx, "gargoyle: ML scoring enabled", "model_path", cfg.ONNXModelPath, "threshold", cfg.MLScoreThreshold)
+	}
+
 	if clientCount, err := registry.CountClients(ctx); err != nil {
 		logger.WarnContext(ctx, "metrics: failed to query initial active client count", "error", err)
 	} else {

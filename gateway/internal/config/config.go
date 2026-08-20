@@ -48,6 +48,12 @@ type Config struct {
 	// AbuseSweepWindow is the sliding window for tracking distinct endpoints (defaults to 10s).
 	AbuseSweepWindow time.Duration
 
+	// ONNXModelPath specifies the path to abuse_model.onnx for in-process ML abuse detection (defaults to "abuse_model.onnx").
+	ONNXModelPath string
+
+	// MLScoreThreshold is the minimum model abuse probability (0.0 to 1.0) required to block a request (defaults to 0.8).
+	MLScoreThreshold float64
+
 	// ClientCacheTTL bounds how long a resolved client (API key -> target
 	// URL, rate limit, plan tier) is cached in memory before the next
 	// lookup re-reads it from Postgres.
@@ -118,6 +124,14 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("config: GARGOYLE_ABUSE_SWEEP_WINDOW must be at least 1ms, got %v", abuseSweepWindow)
 	}
 
+	mlScoreThreshold, err := getFloat("GARGOYLE_ML_SCORE_THRESHOLD", 0.8)
+	if err != nil {
+		return nil, err
+	}
+	if mlScoreThreshold < 0.0 || mlScoreThreshold > 1.0 {
+		return nil, fmt.Errorf("config: GARGOYLE_ML_SCORE_THRESHOLD must be between 0.0 and 1.0, got %v", mlScoreThreshold)
+	}
+
 	readHeaderTimeout, err := getDuration("GARGOYLE_READ_HEADER_TIMEOUT", 5*time.Second)
 	if err != nil {
 		return nil, err
@@ -148,6 +162,8 @@ func Load() (*Config, error) {
 		AbuseBlockThreshold: abuseBlockThreshold,
 		AbuseSweepThreshold: abuseSweepThreshold,
 		AbuseSweepWindow:    abuseSweepWindow,
+		ONNXModelPath:       getEnv("GARGOYLE_ONNX_MODEL_PATH", "abuse_model.onnx"),
+		MLScoreThreshold:    mlScoreThreshold,
 		ClientCacheTTL:      clientCacheTTL,
 		ReadHeaderTimeout:   readHeaderTimeout,
 		ReadTimeout:         readTimeout,
