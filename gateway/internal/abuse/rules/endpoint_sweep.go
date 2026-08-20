@@ -11,22 +11,19 @@ import (
 	"gargoyle/internal/abuse"
 )
 
-// SweepTracker tracks and counts distinct endpoints visited by a client/IP
-// within a rolling time window.
+// SweepTracker tracks distinct endpoints visited by a client/IP.
 type SweepTracker interface {
 	RecordAndCountDistinctPaths(ctx context.Context, key string, path string, window time.Duration) (int64, error)
 }
 
-// EndpointSweepRule detects directory busting, automated scraping sweeps,
-// and path enumeration attacks where an IP or client hits many distinct
-// endpoints in rapid succession (see PROJECT.md §6).
+// EndpointSweepRule detects rapid path enumeration and scraping sweeps.
 type EndpointSweepRule struct {
 	tracker   SweepTracker
 	threshold int
 	window    time.Duration
 }
 
-// NewEndpointSweepRule builds a new EndpointSweepRule.
+// NewEndpointSweepRule constructs an EndpointSweepRule.
 func NewEndpointSweepRule(tracker SweepTracker, threshold int, window time.Duration) *EndpointSweepRule {
 	if threshold <= 0 {
 		threshold = 10

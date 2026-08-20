@@ -1,9 +1,4 @@
-// Package abuse implements Gargoyle's heuristic and ML abuse detection
-// engine (see PROJECT.md §6).
-//
-// Abuse detection evaluates requests for malicious traffic patterns that
-// stay under normal rate limits (such as scraping sweeps, robotic timing
-// pacing, and header anomalies).
+// Package abuse provides heuristic abuse detection and scoring.
 package abuse
 
 import (

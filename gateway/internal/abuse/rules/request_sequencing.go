@@ -17,12 +17,7 @@ type TimingTracker interface {
 	RecordTimestampAndGetHistory(ctx context.Context, key string, timestamp time.Time, maxSamples int, ttl time.Duration) ([]int64, error)
 }
 
-// RequestSequencingRule detects robotic/automated bot scripts by analyzing
-// the uniformity of inter-arrival time intervals between consecutive requests.
-//
-// Human traffic naturally contains high timing jitter (standard deviation > 100ms),
-// whereas automated scripts with fixed loops/sleeps exhibit near-zero interval
-// variance (see PROJECT.md §6).
+// RequestSequencingRule detects automated bot scripts by analyzing inter-arrival interval variance.
 type RequestSequencingRule struct {
 	tracker        TimingTracker
 	minSamples     int
@@ -31,13 +26,13 @@ type RequestSequencingRule struct {
 	ttl            time.Duration
 }
 
-// NewRequestSequencingRule constructs a new RequestSequencingRule.
+// NewRequestSequencingRule constructs a RequestSequencingRule.
 func NewRequestSequencingRule(tracker TimingTracker) *RequestSequencingRule {
 	return &RequestSequencingRule{
 		tracker:        tracker,
 		minSamples:     5,
 		maxSamples:     10,
-		stdDevThreshMs: 15.0, // standard deviation < 15ms indicates robotic pacing
+		stdDevThreshMs: 15.0,
 		ttl:            30 * time.Second,
 	}
 }

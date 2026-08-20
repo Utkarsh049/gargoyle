@@ -20,15 +20,7 @@ type rateLimitErrorResponse struct {
 	RetryAfter int    `json:"retry_after"`
 }
 
-// Middleware enforces rate limits per client based on each client's configured
-// limit from Postgres (see PROJECT.md §5).
-//
-// When a client exceeds their rate limit, it logs the event to Postgres (via logStore)
-// as part of Phase 5 per-client decision logging.
-//
-// It runs after client.Middleware in the router stack so client.FromContext is
-// guaranteed to succeed. If Redis is down or returns an error, it logs the failure
-// and fails open so downstream services remain accessible.
+// Middleware enforces rate limits per tenant based on client configuration.
 func Middleware(limiter Limiter, logStore logstore.Store, logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -39,7 +31,6 @@ func Middleware(limiter Limiter, logStore logstore.Store, logger *slog.Logger) f
 				return
 			}
 
-			// If client has no rate limit configured or <= 0, allow unlimited
 			if c.RateLimit <= 0 {
 				next.ServeHTTP(w, r)
 				return
@@ -47,7 +38,7 @@ func Middleware(limiter Limiter, logStore logstore.Store, logger *slog.Logger) f
 
 			res, err := limiter.Allow(r.Context(), c.ID, c.RateLimit)
 			if err != nil {
-				// Fail-open strategy: log Redis failure and let request through
+				// Fail open on Redis errors
 				logger.ErrorContext(r.Context(), "ratelimit: check failed, failing open",
 					"client_id", c.ID,
 					"client_name", c.Name,
@@ -113,11 +104,7 @@ func Middleware(limiter Limiter, logStore logstore.Store, logger *slog.Logger) f
 	}
 }
 
-// PreAuthMiddleware enforces IP-based rate limiting on incoming requests before
-// authentication or database lookups occur. This protects the registry/Postgres
-// from connection exhaustion attacks driven by streams of distinct, randomized API keys.
-//
-// If limit <= 0, pre-authentication rate limiting is disabled and requests pass through.
+// PreAuthMiddleware enforces IP-based rate limiting before authentication.
 func PreAuthMiddleware(limiter Limiter, limit int, logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

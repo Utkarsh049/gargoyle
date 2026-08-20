@@ -1,9 +1,6 @@
-// Command gargoyle is the Gargoyle gateway process. As of Phase 6, it
-// resolves each request's API key to a registered client (Postgres,
-// cached in memory), enforces per-client rate limits (Redis sliding window),
-// evaluates rule-based abuse heuristics (header anomalies, endpoint sweeps, timing pacing),
-// exposes Prometheus metrics, logs blocked decisions to Postgres (request_logs),
-// and forwards allowed requests to the client's own target_url.
+// Command gargoyle is the API gateway process. It resolves API keys,
+// enforces rate limits and abuse rules, exposes Prometheus metrics,
+// logs blocked decisions, and reverse-proxies allowed traffic.
 package main
 
 import (
@@ -76,7 +73,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	promMetrics := metrics.New(prometheus.DefaultRegisterer)
 	rp := proxy.New(logger)
 
-	// Build abuse detection engine and heuristic rules (Phase 6)
+	// Configure abuse detection rules
 	sweepTracker := rules.NewRedisSweepTracker(rdb)
 	timingTracker := rules.NewRedisTimingTracker(rdb)
 	abuseEngine := abuse.NewEngine(
@@ -101,10 +98,8 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	r.Get("/healthz", handleHealthz)
 	r.Handle("/metrics", promhttp.Handler())
 
-	// Rate-limited and authenticated ingress routes
+	// Authenticated and protected ingress routes
 	r.Group(func(r chi.Router) {
-		// PreAuthMiddleware enforces IP-based rate limiting before authentication
-		// to protect the client registry and Postgres against unauthenticated DoS/key-stuffing floods.
 		r.Use(ratelimit.PreAuthMiddleware(limiter, cfg.PreAuthRateLimit, logger))
 		r.Use(client.Middleware(registry, logger))
 		r.Use(ratelimit.Middleware(limiter, logStore, logger))
@@ -126,18 +121,11 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	return httpserver.Run(ctx, srv, cfg.ShutdownTimeout, logger)
 }
 
-// handleHealthz is a liveness endpoint that never touches Postgres or any
-// client's upstream, so it stays healthy independently of both. It's
-// deliberately excluded from client resolution and proxying.
 func handleHealthz(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("ok"))
 }
 
-// requestLogger is a small structured-logging middleware built on slog,
-// used instead of Chi's default text logger so that request logs are
-// machine-parseable from day one (they'll sit alongside Prometheus metrics
-// and Postgres request logs added in later phases).
 func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

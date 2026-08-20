@@ -1,9 +1,4 @@
-// Package metrics defines Gargoyle's aggregate Prometheus metrics and
-// HTTP measurement middleware (see PROJECT.md §4).
-//
-// Metrics are strictly aggregate (labelled by outcome, not client ID)
-// to prevent time-series cardinality blowup. High-cardinality per-client
-// logs are persisted to Postgres in Phase 5 instead.
+// Package metrics provides Prometheus metrics collectors and middleware.
 package metrics
 
 import (
@@ -13,7 +8,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-// Possible outcome label values for gargoyle_requests_total and gargoyle_request_duration_seconds.
+// Metric outcome labels.
 const (
 	OutcomeAllowed         = "allowed"
 	OutcomeRateLimited     = "rate_limited"
@@ -22,23 +17,15 @@ const (
 	OutcomeError           = "error"
 )
 
-// Metrics holds the registered Prometheus collectors for the Gargoyle core.
+// Metrics holds the registered Prometheus metrics collectors.
 type Metrics struct {
-	// RequestsTotal counts processed requests partitioned by outcome.
-	RequestsTotal *prometheus.CounterVec
-
-	// RequestDuration measures request handling duration in seconds by outcome.
-	RequestDuration *prometheus.HistogramVec
-
-	// ActiveClients gauges the current count of active/registered clients.
-	ActiveClients prometheus.Gauge
-
-	// AbuseScoreDistribution observes heuristic and ML abuse scores (0.0 - 1.0).
-	AbuseScoreDistribution prometheus.Histogram
+	RequestsTotal           *prometheus.CounterVec
+	RequestDuration         *prometheus.HistogramVec
+	ActiveClients           prometheus.Gauge
+	AbuseScoreDistribution  prometheus.Histogram
 }
 
-// New creates and registers Gargoyle's Prometheus metrics with reg.
-// If reg is nil, prometheus.DefaultRegisterer is used.
+// New creates and registers Prometheus metrics collectors.
 func New(reg prometheus.Registerer) *Metrics {
 	factory := promauto.With(reg)
 

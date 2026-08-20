@@ -10,13 +10,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// PostgresStore is the production Store implementation, backed by the
-// `clients` table.
+// PostgresStore implements Store backed by PostgreSQL.
 type PostgresStore struct {
 	pool *pgxpool.Pool
 }
 
-// NewPostgresStore builds a PostgresStore over an existing connection pool.
+// NewPostgresStore creates a PostgresStore over a connection pool.
 func NewPostgresStore(pool *pgxpool.Pool) *PostgresStore {
 	return &PostgresStore{pool: pool}
 }
@@ -25,8 +24,7 @@ const clientColumns = `id::text, name, api_key_hash, target_url, rate_limit, pla
 
 const findByAPIKeyHashQuery = `SELECT ` + clientColumns + ` FROM clients WHERE api_key_hash = $1`
 
-// FindByAPIKeyHash looks up the client whose api_key_hash matches hash. It
-// returns ErrNotFound if no client matches.
+// FindByAPIKeyHash looks up a client by the SHA-256 hash of their API key.
 func (s *PostgresStore) FindByAPIKeyHash(ctx context.Context, hash string) (*Client, error) {
 	row := s.pool.QueryRow(ctx, findByAPIKeyHashQuery, hash)
 
@@ -40,9 +38,7 @@ func (s *PostgresStore) FindByAPIKeyHash(ctx context.Context, hash string) (*Cli
 	return c, nil
 }
 
-// NewClientParams holds the fields needed to register a new client.
-// APIKeyHash must already be hashed (see HashAPIKey) — PostgresStore never
-// sees or stores a plaintext key.
+// NewClientParams holds the attributes required to create a new client.
 type NewClientParams struct {
 	Name       string
 	APIKeyHash string
@@ -56,8 +52,7 @@ const insertClientQuery = `
 	VALUES ($1, $2, $3, $4, $5)
 	RETURNING ` + clientColumns
 
-// CreateClient inserts a new client record. It's used by cmd/gargoylectl
-// today, ahead of the HTTP admin API that lands in Phase 9.
+// CreateClient inserts a new client record.
 func (s *PostgresStore) CreateClient(ctx context.Context, params NewClientParams) (*Client, error) {
 	row := s.pool.QueryRow(ctx, insertClientQuery,
 		params.Name, params.APIKeyHash, params.TargetURL, params.RateLimit, params.PlanTier,

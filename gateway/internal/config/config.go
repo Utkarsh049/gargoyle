@@ -5,26 +5,27 @@
 package config
 
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 )
 
 // Config holds all settings needed to run the Gargoyle gateway.
-//
-// Later phases (Redis, abuse detection thresholds, etc.) will add fields
-// here rather than introducing a second, competing config source.
 type Config struct {
 	// ListenAddr is the address the HTTP server binds to, e.g. ":8080".
 	ListenAddr string
 
 	// DatabaseURL is the Postgres connection string used for the client
-	// registry (Phase 2) and, from Phase 5 onward, per-client request logs.
+	// registry and per-client request logs.
 	DatabaseURL string
 
 	// RedisURL is the connection string for Redis used by the rate limiter
-	// (Phase 3) and abuse detection (Phase 6).
+	// and abuse detection.
 	RedisURL string
 
 	// RateLimitWindow is the sliding window duration over which client rate
@@ -32,24 +33,24 @@ type Config struct {
 	RateLimitWindow time.Duration
 
 	// PreAuthRateLimit bounds the number of requests per IP within the
-	// sliding window allowed before authentication (Phase 3 protection against
+	// sliding window allowed before authentication (protection against
 	// unauthenticated key-stuffing/DoS attacks, defaults to 60 req/window). Set to 0 to disable.
 	PreAuthRateLimit int
 
 	// AbuseBlockThreshold is the minimum risk score (0.0 to 1.0) required to
-	// block a request with 403 Forbidden (Phase 6, defaults to 0.8).
+	// block a request with 403 Forbidden (defaults to 0.8).
 	AbuseBlockThreshold float64
 
 	// AbuseSweepThreshold is the maximum number of distinct paths allowed from
-	// the same client/IP within AbuseSweepWindow before triggering sweep detection (Phase 6, defaults to 10).
+	// the same client/IP within AbuseSweepWindow before triggering sweep detection (defaults to 10).
 	AbuseSweepThreshold int
 
-	// AbuseSweepWindow is the sliding window for tracking distinct endpoints (Phase 6, defaults to 10s).
+	// AbuseSweepWindow is the sliding window for tracking distinct endpoints (defaults to 10s).
 	AbuseSweepWindow time.Duration
 
 	// ClientCacheTTL bounds how long a resolved client (API key -> target
 	// URL, rate limit, plan tier) is cached in memory before the next
-	// lookup re-reads it from Postgres. See PROJECT.md §8.
+	// lookup re-reads it from Postgres.
 	ClientCacheTTL time.Duration
 
 	// ReadHeaderTimeout bounds how long the server waits to read request
@@ -66,10 +67,12 @@ type Config struct {
 	ShutdownTimeout time.Duration
 }
 
-// Load reads configuration from environment variables, applying sane
-// defaults for anything not set, and returns an error if the resulting
-// configuration is invalid.
+var loadOnce sync.Once
+
+// Load reads configuration from environment variables and local .env files,
+// applying defaults for anything not set.
 func Load() (*Config, error) {
+	loadOnce.Do(loadDotEnv)
 	clientCacheTTL, err := getDuration("GARGOYLE_CLIENT_CACHE_TTL", 30*time.Second)
 	if err != nil {
 		return nil, err
@@ -197,3 +200,61 @@ func getDuration(key string, fallback time.Duration) (time.Duration, error) {
 	}
 	return d, nil
 }
+
+func loadDotEnv() {
+	dir, err := os.Getwd()
+	if err != nil {
+		return
+	}
+
+	for i := 0; i < 5; i++ {
+		target := filepath.Join(dir, ".env")
+		if info, err := os.Stat(target); err == nil && !info.IsDir() {
+			_ = parseEnvFile(target)
+			return
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+}
+
+func parseEnvFile(path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		key, val, found := strings.Cut(line, "=")
+		if !found {
+			continue
+		}
+
+		key = strings.TrimSpace(key)
+		val = strings.TrimSpace(val)
+
+		if len(val) >= 2 && ((val[0] == '"' && val[len(val)-1] == '"') || (val[0] == '\'' && val[len(val)-1] == '\'')) {
+			val = val[1 : len(val)-1]
+		}
+
+		if _, exists := os.LookupEnv(key); !exists && val != "" {
+			_ = os.Setenv(key, val)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("config: reading %s: %w", path, err)
+	}
+	return nil
+}
+
