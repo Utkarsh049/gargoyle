@@ -14,6 +14,21 @@ type MLScorer struct {
 	extractor *FeatureExtractor
 }
 
+func resolveModelFile(path string) (string, error) {
+	candidates := []string{
+		path,
+		"../" + path,
+		"../../" + path,
+		"../../../" + path,
+	}
+	for _, c := range candidates {
+		if _, err := os.Stat(c); err == nil {
+			return c, nil
+		}
+	}
+	return "", fmt.Errorf("ONNX model file not found (checked %v)", candidates)
+}
+
 // NewMLScorer initializes the ML scorer by loading the specified ONNX model.
 // If the model path does not exist, an error is returned so caller can gracefully degrade.
 func NewMLScorer(modelPath string, threshold float64) (*MLScorer, error) {
@@ -21,17 +36,18 @@ func NewMLScorer(modelPath string, threshold float64) (*MLScorer, error) {
 		threshold = 0.8
 	}
 
-	if _, err := os.Stat(modelPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("ONNX model file not found at %s: %w", modelPath, err)
+	actualPath, err := resolveModelFile(modelPath)
+	if err != nil {
+		return nil, err
 	}
 
-	ensemble, err := LoadONNXTreeEnsemble(modelPath)
+	ensemble, err := LoadONNXTreeEnsemble(actualPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse ONNX model at %s: %w", modelPath, err)
+		return nil, fmt.Errorf("failed to parse ONNX model at %s: %w", actualPath, err)
 	}
 
 	return &MLScorer{
-		modelPath: modelPath,
+		modelPath: actualPath,
 		threshold: threshold,
 		ensemble:  ensemble,
 		extractor: NewFeatureExtractor(),
