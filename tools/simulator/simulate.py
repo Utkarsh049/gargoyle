@@ -394,7 +394,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--target-url",
-        default=os.getenv("GARGOYLE_TARGET_URL", os.getenv("GARGOYLE_LISTEN_ADDR", DEFAULT_TARGET_URL)),
+        default=os.getenv("GARGOYLE_TARGET_URL") or DEFAULT_TARGET_URL,
         help="Base URL of Gargoyle gateway",
     )
     parser.add_argument(
