@@ -330,7 +330,10 @@ def run_simulator(args: argparse.Namespace) -> None:
                 source_identifier=args.source_id,
                 method=method,
                 endpoint=endpoint_path,
-                headers=headers,
+                headers={
+                    k: "[REDACTED]" if k.lower() == DEFAULT_HEADER_KEY.lower() else v
+                    for k, v in headers.items()
+                },
                 status_code=status_code,
                 latency_ms=latency_ms,
                 true_label=true_label,
