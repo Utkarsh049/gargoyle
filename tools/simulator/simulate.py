@@ -238,8 +238,8 @@ class TrafficGenerator:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)",
             "Accept": "application/json",
         }
-        # Robotic near-zero variance pacing (exact 20ms interval)
-        delay = 0.020
+        # Robotic near-zero variance pacing (uniform interval to trigger sequencing rule)
+        delay = float(os.getenv("GARGOYLE_RATE_PROBE_DELAY", "0.025"))
 
         return "GET", url, headers, None, "rate_probe", delay
 
