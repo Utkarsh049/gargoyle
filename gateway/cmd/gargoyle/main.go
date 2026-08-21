@@ -19,6 +19,7 @@ import (
 
 	"gargoyle/internal/abuse"
 	"gargoyle/internal/abuse/rules"
+	"gargoyle/internal/admin"
 	"gargoyle/internal/client"
 	"gargoyle/internal/config"
 	"gargoyle/internal/db"
@@ -27,6 +28,7 @@ import (
 	"gargoyle/internal/metrics"
 	"gargoyle/internal/proxy"
 	"gargoyle/internal/ratelimit"
+	"gargoyle/web"
 )
 
 func main() {
@@ -84,11 +86,20 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	)
 
 	// ML Abuse Scorer (looks for abuse_model.onnx)
+	mlActive := false
 	if mlScorer, err := abuse.NewMLScorer(cfg.ONNXModelPath, cfg.MLScoreThreshold); err != nil {
 		logger.InfoContext(ctx, "gargoyle: ML scoring disabled, running rules-only", "reason", err.Error())
 	} else {
+		mlActive = true
 		abuseEngine.AddRule(mlScorer)
 		logger.InfoContext(ctx, "gargoyle: ML scoring enabled", "model_path", cfg.ONNXModelPath, "threshold", cfg.MLScoreThreshold)
+	}
+
+	adminStore := admin.NewPostgresStore(pool, cfg.ONNXModelPath, mlActive)
+	adminRouter := admin.NewRouter(adminStore, logger)
+	webHandler, err := web.NewHandler(adminStore, logger)
+	if err != nil {
+		return fmt.Errorf("web: initializing dashboard: %w", err)
 	}
 
 	if clientCount, err := registry.CountClients(ctx); err != nil {
@@ -105,6 +116,10 @@ func run(ctx context.Context, logger *slog.Logger) error {
 
 	r.Get("/healthz", handleHealthz)
 	r.Handle("/metrics", promhttp.Handler())
+
+	// Admin JSON REST API & Embedded Web UI
+	r.Mount("/api/admin", adminRouter)
+	webHandler.MountRoutes(r)
 
 	// Authenticated and protected ingress routes
 	r.Group(func(r chi.Router) {

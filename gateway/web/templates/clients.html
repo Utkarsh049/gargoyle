@@ -1,0 +1,89 @@
+{{define "content"}}
+<div class="clients-view">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+      <h2 style="font-size: 18px; font-weight: 500;">Registered Clients</h2>
+      <p style="font-size: 12px; color: var(--text-muted);">Manage tenant ingress routes, API key quotas, and target backends</p>
+    </div>
+    <button class="pill-button" onclick="openCreateClientModal()">+ Register New Client</button>
+  </div>
+
+  <div class="data-table-container">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Client Name</th>
+          <th>Client ID</th>
+          <th>Target Upstream URL</th>
+          <th>Rate Limit</th>
+          <th>Plan Tier</th>
+          <th>Total Requests</th>
+          <th>Blocked Abuse</th>
+          <th>Created</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{if .Clients}}
+          {{range .Clients}}
+          <tr>
+            <td><strong>{{.Name}}</strong></td>
+            <td><code style="color: var(--text-medium); font-size: 11px;">{{.ID}}</code></td>
+            <td><a href="{{.TargetURLString}}" target="_blank" style="color: var(--text-high); text-decoration: none;">{{.TargetURLString}}</a></td>
+            <td>{{.RateLimit}} req/min</td>
+            <td><span class="badge {{if eq .PlanTier "enterprise"}}badge-allowed{{else}}badge-flagged{{end}}">{{.PlanTier}}</span></td>
+            <td>{{.TotalRequests}}</td>
+            <td><span style="color: {{if gt .BlockedRequests 0}}var(--status-blocked){{else}}var(--text-muted){{end}};">{{.BlockedRequests}}</span></td>
+            <td style="color: var(--text-muted); font-size: 11px;">{{.CreatedAt.Format "Jan 02, 2006"}}</td>
+          </tr>
+          {{end}}
+        {{else}}
+          <tr>
+            <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 32px;">No clients registered yet.</td>
+          </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal Dialog: Register Client -->
+<div id="createClientModal" class="modal-backdrop" style="display: none;">
+  <div class="modal-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h3 style="font-size: 16px; font-weight: 600;">Register New Client</h3>
+      <button class="icon-options-trigger" onclick="closeCreateClientModal()">✕</button>
+    </div>
+
+    <form method="POST" action="/web/clients/create">
+      <div class="form-group">
+        <label class="form-label" for="clientName">Client / Application Name</label>
+        <input class="form-input" type="text" id="clientName" name="name" placeholder="e.g. Acme Web Ingress" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="targetURL">Target Upstream URL</label>
+        <input class="form-input" type="url" id="targetURL" name="target_url" placeholder="http://localhost:9000" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="rateLimit">Rate Limit (req/min)</label>
+        <input class="form-input" type="number" id="rateLimit" name="rate_limit" value="1000" min="1" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="planTier">Plan Tier</label>
+        <select class="form-input" id="planTier" name="plan_tier">
+          <option value="free">Free Tier (Standard)</option>
+          <option value="pro">Pro Tier (Priority)</option>
+          <option value="enterprise" selected>Enterprise Tier</option>
+        </select>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+        <button type="button" class="pill-button" onclick="closeCreateClientModal()">Cancel</button>
+        <button type="submit" class="pill-button" style="background: var(--text-high); color: var(--bg-canvas); font-weight: 600;">Create & Generate Key</button>
+      </div>
+    </form>
+  </div>
+</div>
+{{end}}

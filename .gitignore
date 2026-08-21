@@ -11,4 +11,7 @@
 
 # Editor/OS cruft
 .DS_Store
+
+
 *.csv
+*.rdb

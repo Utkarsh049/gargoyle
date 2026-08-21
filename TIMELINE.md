@@ -13,8 +13,8 @@ Ten phases, ordered so that every phase produces something runnable and demoable
 - [x] Phase 5 — Per-client logging
 - [x] Phase 6 — Rule-based abuse detection
 - [x] Phase 7 — Traffic simulator
-- [ ] Phase 8 — ML abuse scoring (optional layer)
-- [ ] Phase 9 — Admin API + embedded dashboard UI
+- [x] Phase 8 — ML abuse scoring (optional layer)
+- [x] Phase 9 — Admin API + embedded dashboard UI
 - [ ] Phase 10 — Hardening & packaging
 
 ---
