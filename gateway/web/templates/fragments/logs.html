@@ -1,0 +1,44 @@
+<div id="liveLogsContainer" hx-get="/web/fragments/logs?outcome={{.SelectedOutcome}}" hx-trigger="every 4s" hx-swap="outerHTML">
+  <div class="data-table-container">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Client</th>
+          <th>IP Address</th>
+          <th>Request Path</th>
+          <th>Outcome</th>
+          <th>Abuse Score</th>
+          <th>Detection Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{if .Logs}}
+          {{range .Logs}}
+          <tr>
+            <td style="color: var(--text-muted); font-size: 11px;">{{.Timestamp.Format "15:04:05.000"}}</td>
+            <td><strong>{{.ClientName}}</strong></td>
+            <td><code style="color: var(--text-medium);">{{.IP}}</code></td>
+            <td><code style="color: var(--text-high);">{{.Path}}</code></td>
+            <td>
+              <span class="badge {{if eq .Outcome "allowed"}}badge-allowed{{else if eq .Outcome "blocked_abuse"}}badge-blocked{{else}}badge-flagged{{end}}">
+                {{.Outcome}}
+              </span>
+            </td>
+            <td>
+              <span style="font-weight: 600; color: {{if ge .AbuseScore 0.8}}var(--status-blocked){{else if ge .AbuseScore 0.5}}var(--status-flagged){{else}}var(--status-allowed){{end}};">
+                {{printf "%.2f" .AbuseScore}}
+              </span>
+            </td>
+            <td style="color: var(--text-medium); font-size: 12px;">{{.Reason}}</td>
+          </tr>
+          {{end}}
+        {{else}}
+          <tr>
+            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 32px;">No logged security events found.</td>
+          </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</div>

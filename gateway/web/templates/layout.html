@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{.Title}} - Gargoyle API Gateway</title>
+  
+  <!-- Modern Typography (Plus Jakarta Sans & Inter) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Dashboard Stylesheet -->
+  <link rel="stylesheet" href="/static/styles.css">
+  
+  <!-- HTMX (Zero-Build Live Interactivity) -->
+  <script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
+  
+  <!-- Dashboard Logic -->
+  <script src="/static/dashboard.js" defer></script>
+</head>
+<body>
+  <div class="dashboard-container">
+    <!-- Global Header & Navigation -->
+    <header class="global-header">
+      <div class="header-left">
+        <a href="/dashboard" class="logo-brand">
+          <svg class="logo-icon" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="28" height="28" rx="8" fill="#17181C"/>
+            <path d="M7 19L14 7L21 19H7Z" stroke="#DCEADE" stroke-width="2" stroke-linejoin="round"/>
+            <circle cx="14" cy="15" r="2" fill="#7CE57B"/>
+          </svg>
+          <span>Gargoyle</span>
+        </a>
+        <nav class="primary-nav">
+          <a href="/dashboard" class="nav-link {{if eq .ActiveNav "dashboard"}}active{{end}}">Dashboard</a>
+          <a href="/clients" class="nav-link {{if eq .ActiveNav "clients"}}active{{end}}">Clients</a>
+          <a href="/logs" class="nav-link {{if eq .ActiveNav "logs"}}active{{end}}">Request Logs</a>
+          <a href="/settings" class="nav-link {{if eq .ActiveNav "settings"}}active{{end}}">Settings</a>
+        </nav>
+      </div>
+      <div class="header-right">
+        <button class="user-selector" aria-label="Account Menu">
+          <span class="account-prefix">Account:</span>
+          <strong>Admin (Production)</strong>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Overview Sub-bar -->
+    <section class="overview-bar">
+      <h1 class="overview-title">{{.SectionTitle}}</h1>
+      <div class="overview-meta">
+        <div class="time-widget">
+          <span class="time-digits" id="liveClockDigits">11:37 AM</span>
+          <span class="time-label">Time</span>
+        </div>
+        <div class="date-widget" id="liveDateWidget">21 August</div>
+      </div>
+    </section>
+
+    <!-- Page Content Slot -->
+    <main id="mainContent">
+      {{template "content" .}}
+    </main>
+  </div>
+</body>
+</html>

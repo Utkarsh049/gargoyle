@@ -1,0 +1,935 @@
+/* ==========================================================================
+   GARGOYLE API GATEWAY - DASHBOARD DESIGN SYSTEM
+   Theme: Dark Neo-Minimalist (Charcoal #101114 / Sage Mint #DCEADE)
+   ========================================================================== */
+
+:root {
+  /* Canvas & Surfaces */
+  --bg-canvas: #101114;
+  --surface-primary: #17181C;
+  --surface-secondary: #1E2025;
+  --surface-dark-inset: #121417;
+  --surface-border: rgba(255, 255, 255, 0.08);
+  --surface-border-subtle: rgba(255, 255, 255, 0.04);
+  --surface-border-hover: rgba(255, 255, 255, 0.18);
+
+  /* Accent Palette (Sage / Eco-Mint) */
+  --accent-primary: #DCEADE;
+  --accent-text-dark: #141715;
+  --accent-green-glow: #7CE57B;
+  --accent-muted-pill: rgba(220, 234, 222, 0.12);
+
+  /* Monochromatic Text & Data Tints */
+  --text-high: #F5F5F7;
+  --text-medium: #9A9FA8;
+  --text-muted: #585D68;
+  --text-dim: #373B43;
+
+  /* Status Colors */
+  --status-allowed: #7CE57B;
+  --status-blocked: #FF5A5F;
+  --status-flagged: #FFB347;
+
+  /* Typography */
+  --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+  --radius-card: 20px;
+  --radius-subcard: 14px;
+  --radius-pill: 9999px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-canvas);
+  color: var(--text-high);
+  font-family: var(--font-family);
+  font-feature-settings: "tnum" 1, "cv02" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 32px;
+}
+
+/* --------------------------------------------------------------------------
+   Master Container & Layout
+   -------------------------------------------------------------------------- */
+.dashboard-container {
+  max-width: 1440px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* --------------------------------------------------------------------------
+   Global Header & Navigation
+   -------------------------------------------------------------------------- */
+.global-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 36px;
+}
+
+.logo-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--text-high);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.logo-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.primary-nav {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.nav-link {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+.nav-link:hover {
+  color: var(--text-high);
+}
+
+.nav-link.active {
+  color: var(--text-high);
+  font-weight: 600;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.user-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-medium);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.user-selector:hover {
+  background: var(--surface-secondary);
+  color: var(--text-high);
+}
+
+.user-selector .account-prefix {
+  color: var(--text-muted);
+}
+
+/* --------------------------------------------------------------------------
+   Overview Sub-bar
+   -------------------------------------------------------------------------- */
+.overview-bar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 4px 0 12px 0;
+}
+
+.overview-title {
+  font-size: 26px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--text-high);
+}
+
+.overview-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 32px;
+}
+
+.time-widget {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.time-digits {
+  font-size: 18px;
+  font-weight: 300;
+  letter-spacing: -0.01em;
+  color: var(--text-high);
+}
+
+.time-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.date-widget {
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--text-high);
+}
+
+/* --------------------------------------------------------------------------
+   12-Column Responsive CSS Grid
+   -------------------------------------------------------------------------- */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 16px;
+}
+
+/* Top Row */
+.col-traffic-activity { grid-column: span 6; }
+.col-gateway-security { grid-column: span 3; }
+.col-recommendations  { grid-column: span 3; }
+
+/* Bottom Row */
+.col-threat-velocity  { grid-column: span 2; }
+.col-detailed-report  { grid-column: span 4; }
+.col-clean-traffic    { grid-column: span 6; }
+
+/* --------------------------------------------------------------------------
+   Card Primitives
+   -------------------------------------------------------------------------- */
+.card-dark {
+  background: var(--surface-primary);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-card);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  transition: border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-dark:hover {
+  border-color: var(--surface-border-hover);
+  transform: translateY(-2px);
+}
+
+.card-sage {
+  background: var(--accent-primary);
+  color: var(--accent-text-dark);
+  border-radius: var(--radius-card);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-sage:hover {
+  transform: translateY(-2px);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.card-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.card-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.card-sage .card-subtitle {
+  color: rgba(20, 23, 21, 0.65);
+}
+
+/* Action Buttons & Pills */
+.pill-button {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-high);
+  font-size: 11px;
+  font-weight: 500;
+  font-family: inherit;
+  padding: 5px 14px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pill-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.pill-button-dark {
+  background: transparent;
+  border: 1px solid rgba(20, 23, 21, 0.3);
+  color: var(--accent-text-dark);
+  font-size: 11px;
+  font-weight: 500;
+  font-family: inherit;
+  padding: 5px 14px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pill-button-dark:hover {
+  background: rgba(20, 23, 21, 0.08);
+  border-color: rgba(20, 23, 21, 0.6);
+}
+
+.icon-options-trigger {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.card-sage .icon-options-trigger {
+  color: rgba(20, 23, 21, 0.6);
+}
+
+/* --------------------------------------------------------------------------
+   Card 1: Total Traffic & Activity (Equalizer Sparklines)
+   -------------------------------------------------------------------------- */
+.equalizer-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 8px;
+}
+
+.equalizer-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.equalizer-col-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.equalizer-col-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-medium);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.trend-arrow-up {
+  color: var(--text-high);
+  font-size: 10px;
+}
+
+.trend-arrow-down {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.histogram-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 64px;
+  padding: 4px 0;
+}
+
+.bar {
+  flex: 1;
+  background: var(--text-dim);
+  border-radius: 1.5px;
+  min-height: 4px;
+  transition: height 0.3s ease, background-color 0.2s ease;
+}
+
+.bar.active {
+  background: #FFFFFF;
+}
+
+.equalizer-col-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.metric-range {
+  font-size: 28px;
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  color: var(--text-high);
+  line-height: 1.1;
+}
+
+.metric-unit {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* --------------------------------------------------------------------------
+   Card 2: Gateway Security (Isometric 3D Topology Wireframe)
+   -------------------------------------------------------------------------- */
+.security-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.status-label-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-high);
+}
+
+.status-badge-inline {
+  font-size: 11px;
+  color: var(--accent-green-glow);
+  font-weight: 500;
+}
+
+/* iOS Toggle */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(255, 255, 255, 0.2);
+  transition: .25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border-radius: 20px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: .25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+  background-color: var(--accent-green-glow);
+}
+
+input:checked + .toggle-slider:before {
+  transform: translateX(16px);
+  background-color: var(--bg-canvas);
+}
+
+/* Wireframe Canvas */
+.topology-viewport {
+  width: 100%;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin: 4px 0;
+}
+
+#topologyCanvas {
+  width: 100%;
+  height: 100%;
+}
+
+.capacity-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.capacity-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.progress-track {
+  flex: 1;
+  height: 4px;
+  background: var(--surface-secondary);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #FFFFFF;
+  border-radius: var(--radius-pill);
+}
+
+.capacity-pct {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-high);
+}
+
+/* --------------------------------------------------------------------------
+   Card 3: Security Recommendations & Insights
+   -------------------------------------------------------------------------- */
+.recommendations-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.rec-card-primary {
+  background: var(--accent-primary);
+  color: var(--accent-text-dark);
+  border-radius: var(--radius-subcard);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rec-title {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.rec-desc {
+  font-size: 12px;
+  line-height: 1.35;
+  opacity: 0.85;
+}
+
+.rec-tag {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.65;
+  margin-top: 2px;
+}
+
+.rec-card-secondary {
+  background: var(--surface-dark-inset);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-subcard);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rec-card-secondary .rec-title {
+  color: var(--text-high);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.rec-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* --------------------------------------------------------------------------
+   Card 4: Threat Velocity (Sage Hero KPI)
+   -------------------------------------------------------------------------- */
+.hero-numeric-kpi {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 24px;
+}
+
+.numeric-huge {
+  font-size: 38px;
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.numeric-unit {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   Card 5: Detailed Traffic Report (Weekly Calendar Matrix)
+   -------------------------------------------------------------------------- */
+.day-matrix-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.day-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+  border-radius: 12px;
+  transition: all 0.15s ease;
+}
+
+.day-slot.active {
+  background: #FFFFFF;
+  color: var(--bg-canvas);
+}
+
+.day-header {
+  font-size: 11px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--text-muted);
+}
+
+.day-slot.active .day-header {
+  color: var(--bg-canvas);
+  font-weight: 600;
+}
+
+.day-volume {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-high);
+}
+
+.day-slot.active .day-volume {
+  color: var(--bg-canvas);
+}
+
+/* --------------------------------------------------------------------------
+   Card 6: Clean Traffic Ratio (Sage Accent Banner + Node Pipeline)
+   -------------------------------------------------------------------------- */
+.clean-traffic-layout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  margin-top: 16px;
+}
+
+.clean-metric-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.clean-pct-huge {
+  font-size: 38px;
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.clean-time-window {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+/* Timeline Pipeline */
+.node-timeline-slider {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  position: relative;
+  padding: 0 10px;
+}
+
+.timeline-track {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  height: 4px;
+  background: rgba(20, 23, 21, 0.2);
+  z-index: 1;
+}
+
+.timeline-active-segment {
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  height: 4px;
+  background: var(--accent-text-dark);
+  z-index: 2;
+}
+
+.timeline-nodes {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+  z-index: 3;
+}
+
+.timeline-node-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.node-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  border: 2px solid rgba(20, 23, 21, 0.4);
+}
+
+.node-dot.solid {
+  background: var(--accent-text-dark);
+  border-color: var(--accent-text-dark);
+}
+
+.node-time {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent-text-dark);
+}
+
+/* --------------------------------------------------------------------------
+   Tables & Data Streams (Clients / Logs Pages)
+   -------------------------------------------------------------------------- */
+.data-table-container {
+  background: var(--surface-primary);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  margin-top: 16px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+
+.data-table th {
+  background: var(--surface-secondary);
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.data-table td {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--surface-border-subtle);
+  color: var(--text-high);
+}
+
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.badge-allowed {
+  background: rgba(124, 229, 123, 0.12);
+  color: var(--status-allowed);
+}
+
+.badge-blocked {
+  background: rgba(255, 90, 95, 0.12);
+  color: var(--status-blocked);
+}
+
+.badge-flagged {
+  background: rgba(255, 179, 71, 0.12);
+  color: var(--status-flagged);
+}
+
+/* Modal Dialogs */
+.modal-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-card {
+  background: var(--surface-primary);
+  border: 1px solid var(--surface-border-hover);
+  border-radius: var(--radius-card);
+  width: 100%;
+  max-width: 480px;
+  padding: 28px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.form-label {
+  font-size: 12px;
+  color: var(--text-medium);
+  font-weight: 500;
+}
+
+.form-input {
+  background: var(--surface-dark-inset);
+  border: 1px solid var(--surface-border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: var(--text-high);
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.form-input:focus {
+  border-color: var(--text-high);
+}
+
+/* --------------------------------------------------------------------------
+   Responsive Breakpoints
+   -------------------------------------------------------------------------- */
+@media (max-width: 1199px) and (min-width: 768px) {
+  .col-traffic-activity { grid-column: span 12; }
+  .col-gateway-security { grid-column: span 6; }
+  .col-recommendations  { grid-column: span 6; }
+  .col-threat-velocity  { grid-column: span 4; }
+  .col-detailed-report  { grid-column: span 8; }
+  .col-clean-traffic    { grid-column: span 12; }
+}
+
+@media (max-width: 767px) {
+  body {
+    padding: 16px;
+  }
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  .col-traffic-activity,
+  .col-gateway-security,
+  .col-recommendations,
+  .col-threat-velocity,
+  .col-detailed-report,
+  .col-clean-traffic {
+    grid-column: span 1;
+  }
+  .overview-bar {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .equalizer-grid {
+    grid-template-columns: 1fr;
+  }
+  .clean-traffic-layout {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
