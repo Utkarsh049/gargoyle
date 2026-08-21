@@ -247,16 +247,10 @@ func (h *Handler) handleCreateClientForm(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	planTier := r.FormValue("plan_tier")
-	if planTier == "" {
-		planTier = "free"
-	}
-
 	_, _, err := h.store.CreateClient(r.Context(), admin.NewClientParams{
 		Name:      name,
 		TargetURL: targetURL,
 		RateLimit: rateLimit,
-		PlanTier:  planTier,
 	})
 	if err != nil {
 		h.logger.ErrorContext(r.Context(), "web: failed to create client from form", "error", err)

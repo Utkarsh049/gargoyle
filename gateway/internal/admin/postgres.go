@@ -37,7 +37,6 @@ func (s *PostgresStore) ListClients(ctx context.Context) ([]ClientSummary, error
 			c.api_key_hash, 
 			c.target_url, 
 			c.rate_limit, 
-			c.plan_tier, 
 			c.created_at,
 			COALESCE(COUNT(l.id), 0) AS total_requests,
 			COALESCE(COUNT(CASE WHEN l.outcome = 'blocked_abuse' THEN 1 END), 0) AS blocked_requests,
@@ -66,7 +65,6 @@ func (s *PostgresStore) ListClients(ctx context.Context) ([]ClientSummary, error
 			&c.APIKeyHash,
 			&targetRaw,
 			&c.RateLimit,
-			&c.PlanTier,
 			&c.CreatedAt,
 			&c.TotalRequests,
 			&c.BlockedRequests,
@@ -96,7 +94,6 @@ func (s *PostgresStore) GetClient(ctx context.Context, id string) (*ClientSummar
 			c.api_key_hash, 
 			c.target_url, 
 			c.rate_limit, 
-			c.plan_tier, 
 			c.created_at,
 			COALESCE(COUNT(l.id), 0) AS total_requests,
 			COALESCE(COUNT(CASE WHEN l.outcome = 'blocked_abuse' THEN 1 END), 0) AS blocked_requests,
@@ -117,7 +114,6 @@ func (s *PostgresStore) GetClient(ctx context.Context, id string) (*ClientSummar
 		&c.APIKeyHash,
 		&targetRaw,
 		&c.RateLimit,
-		&c.PlanTier,
 		&c.CreatedAt,
 		&c.TotalRequests,
 		&c.BlockedRequests,
@@ -149,9 +145,6 @@ func (s *PostgresStore) CreateClient(ctx context.Context, params NewClientParams
 	if params.RateLimit <= 0 {
 		params.RateLimit = 60
 	}
-	if params.PlanTier == "" {
-		params.PlanTier = "free"
-	}
 
 	rawKey, err := client.GenerateAPIKey()
 	if err != nil {
@@ -160,22 +153,21 @@ func (s *PostgresStore) CreateClient(ctx context.Context, params NewClientParams
 	keyHash := client.HashAPIKey(rawKey)
 
 	query := `
-		INSERT INTO clients (name, api_key_hash, target_url, rate_limit, plan_tier)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id::text, name, api_key_hash, target_url, rate_limit, plan_tier, created_at
+		INSERT INTO clients (name, api_key_hash, target_url, rate_limit)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id::text, name, api_key_hash, target_url, rate_limit, created_at
 	`
 
 	var (
 		c         ClientSummary
 		targetRaw string
 	)
-	err = s.pool.QueryRow(ctx, query, params.Name, keyHash, params.TargetURL, params.RateLimit, params.PlanTier).Scan(
+	err = s.pool.QueryRow(ctx, query, params.Name, keyHash, params.TargetURL, params.RateLimit).Scan(
 		&c.ID,
 		&c.Name,
 		&c.APIKeyHash,
 		&targetRaw,
 		&c.RateLimit,
-		&c.PlanTier,
 		&c.CreatedAt,
 	)
 	if err != nil {
@@ -196,23 +188,21 @@ func (s *PostgresStore) UpdateClient(ctx context.Context, id string, params NewC
 		UPDATE clients
 		SET name = COALESCE(NULLIF($1, ''), name),
 		    target_url = COALESCE(NULLIF($2, ''), target_url),
-		    rate_limit = CASE WHEN $3 > 0 THEN $3 ELSE rate_limit END,
-		    plan_tier = COALESCE(NULLIF($4, ''), plan_tier)
-		WHERE id = $5
-		RETURNING id::text, name, api_key_hash, target_url, rate_limit, plan_tier, created_at
+		    rate_limit = CASE WHEN $3 > 0 THEN $3 ELSE rate_limit END
+		WHERE id = $4
+		RETURNING id::text, name, api_key_hash, target_url, rate_limit, created_at
 	`
 
 	var (
 		c         ClientSummary
 		targetRaw string
 	)
-	err := s.pool.QueryRow(ctx, query, params.Name, params.TargetURL, params.RateLimit, params.PlanTier, id).Scan(
+	err := s.pool.QueryRow(ctx, query, params.Name, params.TargetURL, params.RateLimit, id).Scan(
 		&c.ID,
 		&c.Name,
 		&c.APIKeyHash,
 		&targetRaw,
 		&c.RateLimit,
-		&c.PlanTier,
 		&c.CreatedAt,
 	)
 	if err != nil {

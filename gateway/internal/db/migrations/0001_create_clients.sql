@@ -5,7 +5,6 @@ CREATE TABLE IF NOT EXISTS clients (
     api_key_hash  TEXT NOT NULL UNIQUE,
     target_url    TEXT NOT NULL,
     rate_limit    INTEGER NOT NULL DEFAULT 60,
-    plan_tier     TEXT NOT NULL DEFAULT 'free',
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

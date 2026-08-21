@@ -20,7 +20,7 @@ func NewPostgresStore(pool *pgxpool.Pool) *PostgresStore {
 	return &PostgresStore{pool: pool}
 }
 
-const clientColumns = `id::text, name, api_key_hash, target_url, rate_limit, plan_tier, created_at`
+const clientColumns = `id::text, name, api_key_hash, target_url, rate_limit, created_at`
 
 const findByAPIKeyHashQuery = `SELECT ` + clientColumns + ` FROM clients WHERE api_key_hash = $1`
 
@@ -44,18 +44,17 @@ type NewClientParams struct {
 	APIKeyHash string
 	TargetURL  string
 	RateLimit  int
-	PlanTier   string
 }
 
 const insertClientQuery = `
-	INSERT INTO clients (name, api_key_hash, target_url, rate_limit, plan_tier)
-	VALUES ($1, $2, $3, $4, $5)
+	INSERT INTO clients (name, api_key_hash, target_url, rate_limit)
+	VALUES ($1, $2, $3, $4)
 	RETURNING ` + clientColumns
 
 // CreateClient inserts a new client record.
 func (s *PostgresStore) CreateClient(ctx context.Context, params NewClientParams) (*Client, error) {
 	row := s.pool.QueryRow(ctx, insertClientQuery,
-		params.Name, params.APIKeyHash, params.TargetURL, params.RateLimit, params.PlanTier,
+		params.Name, params.APIKeyHash, params.TargetURL, params.RateLimit,
 	)
 
 	c, err := scanClient(row)
@@ -82,7 +81,7 @@ func scanClient(row pgx.Row) (*Client, error) {
 		c         Client
 		targetRaw string
 	)
-	if err := row.Scan(&c.ID, &c.Name, &c.APIKeyHash, &targetRaw, &c.RateLimit, &c.PlanTier, &c.CreatedAt); err != nil {
+	if err := row.Scan(&c.ID, &c.Name, &c.APIKeyHash, &targetRaw, &c.RateLimit, &c.CreatedAt); err != nil {
 		return nil, err
 	}
 

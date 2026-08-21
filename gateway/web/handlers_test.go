@@ -28,7 +28,6 @@ func (m *mockAdminStore) ListClients(ctx context.Context) ([]admin.ClientSummary
 			TargetURL:       u,
 			TargetURLString: "http://localhost:9000",
 			RateLimit:       1000,
-			PlanTier:        "enterprise",
 			CreatedAt:       time.Now(),
 		},
 	}, nil
@@ -168,7 +167,7 @@ func TestWebHandler_CreateClientForm_Validation(t *testing.T) {
 		},
 		{
 			name:         "valid submission",
-			formData:     "name=TestApp&target_url=http://localhost:9000&rate_limit=500&plan_tier=pro",
+			formData:     "name=TestApp&target_url=http://localhost:9000&rate_limit=500",
 			expectedCode: http.StatusSeeOther,
 		},
 	}

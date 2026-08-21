@@ -72,7 +72,6 @@ name            text
 api_key_hash    text
 target_url      text
 rate_limit      int      -- requests per minute
-plan_tier       text     -- free / pro / enterprise
 created_at      timestamp
 ```
 

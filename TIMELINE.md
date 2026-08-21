@@ -15,7 +15,7 @@ Ten phases, ordered so that every phase produces something runnable and demoable
 - [x] Phase 7 — Traffic simulator
 - [x] Phase 8 — ML abuse scoring (optional layer)
 - [x] Phase 9 — Admin API + embedded dashboard UI
-- [ ] Phase 10 — Hardening & packaging
+- [x] Phase 10 — Hardening & packaging
 
 ---
 
