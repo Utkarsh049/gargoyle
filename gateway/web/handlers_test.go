@@ -2,18 +2,22 @@ package web
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
 	"gargoyle/internal/admin"
 )
 
-type mockAdminStore struct{}
+type mockAdminStore struct {
+	statsErr bool
+}
 
 func (m *mockAdminStore) ListClients(ctx context.Context) ([]admin.ClientSummary, error) {
 	u, _ := url.Parse("http://localhost:9000")
@@ -47,6 +51,9 @@ func (m *mockAdminStore) DeleteClient(ctx context.Context, id string) error {
 }
 
 func (m *mockAdminStore) GetSystemStats(ctx context.Context) (*admin.SystemStats, error) {
+	if m.statsErr {
+		return nil, errors.New("db down")
+	}
 	return &admin.SystemStats{
 		TotalRequests:       1500,
 		AllowedRequests:     1400,
@@ -123,5 +130,76 @@ func TestWebHandler_Dashboard(t *testing.T) {
 				t.Errorf("path %s: expected status %d, got %d", tt.path, tt.expectedCode, rec.Code)
 			}
 		})
+	}
+}
+
+func TestWebHandler_CreateClientForm_Validation(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	h, err := NewHandler(&mockAdminStore{}, logger)
+	if err != nil {
+		t.Fatalf("failed to create handler: %v", err)
+	}
+	routes := h.Routes()
+
+	tests := []struct {
+		name         string
+		formData     string
+		expectedCode int
+	}{
+		{
+			name:         "missing name",
+			formData:     "target_url=http://localhost:9000&rate_limit=100",
+			expectedCode: http.StatusBadRequest,
+		},
+		{
+			name:         "missing target_url",
+			formData:     "name=TestApp&rate_limit=100",
+			expectedCode: http.StatusBadRequest,
+		},
+		{
+			name:         "non-numeric rate_limit",
+			formData:     "name=TestApp&target_url=http://localhost:9000&rate_limit=abc",
+			expectedCode: http.StatusBadRequest,
+		},
+		{
+			name:         "negative rate_limit",
+			formData:     "name=TestApp&target_url=http://localhost:9000&rate_limit=-5",
+			expectedCode: http.StatusBadRequest,
+		},
+		{
+			name:         "valid submission",
+			formData:     "name=TestApp&target_url=http://localhost:9000&rate_limit=500&plan_tier=pro",
+			expectedCode: http.StatusSeeOther,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/web/clients/create", strings.NewReader(tt.formData))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			rec := httptest.NewRecorder()
+			routes.ServeHTTP(rec, req)
+
+			if rec.Code != tt.expectedCode {
+				t.Errorf("expected status %d, got %d", tt.expectedCode, rec.Code)
+			}
+		})
+	}
+}
+
+func TestWebHandler_NilStatsFallback(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	h, err := NewHandler(&mockAdminStore{statsErr: true}, logger)
+	if err != nil {
+		t.Fatalf("failed to create handler: %v", err)
+	}
+	routes := h.Routes()
+
+	req := httptest.NewRequest(http.MethodGet, "/dashboard", nil)
+	rec := httptest.NewRecorder()
+	routes.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 with fallback stats on db error, got %d", rec.Code)
 	}
 }
