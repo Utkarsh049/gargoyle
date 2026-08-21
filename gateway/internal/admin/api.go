@@ -62,7 +62,6 @@ type CreateClientRequest struct {
 	Name      string `json:"name"`
 	TargetURL string `json:"target_url"`
 	RateLimit int    `json:"rate_limit"`
-	PlanTier  string `json:"plan_tier"`
 }
 
 // CreateClientResponse returns the created tenant and its live plaintext API key.
@@ -91,7 +90,6 @@ func (a *API) handleCreateClient(w http.ResponseWriter, r *http.Request) {
 		Name:      req.Name,
 		TargetURL: req.TargetURL,
 		RateLimit: req.RateLimit,
-		PlanTier:  req.PlanTier,
 	})
 	if err != nil {
 		a.respondError(w, http.StatusInternalServerError, err.Error())
@@ -126,7 +124,6 @@ func (a *API) handleUpdateClient(w http.ResponseWriter, r *http.Request) {
 		Name:      req.Name,
 		TargetURL: req.TargetURL,
 		RateLimit: req.RateLimit,
-		PlanTier:  req.PlanTier,
 	})
 	if err != nil {
 		a.respondError(w, http.StatusInternalServerError, err.Error())

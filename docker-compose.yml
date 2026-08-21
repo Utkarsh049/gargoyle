@@ -1,0 +1,108 @@
+# =============================================================================
+# Gargoyle API Gateway - Docker Compose Full-Stack Orchestration
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Datastores
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: gargoyle-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${GARGOYLE_DB_USER:-gargoyle}
+      POSTGRES_PASSWORD: ${GARGOYLE_DB_PASSWORD:-gargoyle}
+      POSTGRES_DB: ${GARGOYLE_DB_NAME:-gargoyle}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./deploy/postgres/init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${GARGOYLE_DB_USER:-gargoyle} -d ${GARGOYLE_DB_NAME:-gargoyle}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: gargoyle-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Mock Upstream Backend
+  # ---------------------------------------------------------------------------
+  dummybackend:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+      target: dummybackend
+    container_name: gargoyle-dummybackend
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    environment:
+      - PORT=9000
+
+  # ---------------------------------------------------------------------------
+  # Gargoyle Core API Gateway
+  # ---------------------------------------------------------------------------
+  gargoyle:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+      target: gargoyle
+    container_name: gargoyle-gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      GARGOYLE_LISTEN_ADDR: ":8080"
+      GARGOYLE_DATABASE_URL: "postgres://${GARGOYLE_DB_USER:-gargoyle}:${GARGOYLE_DB_PASSWORD:-gargoyle}@postgres:5432/${GARGOYLE_DB_NAME:-gargoyle}?sslmode=disable"
+      GARGOYLE_REDIS_URL: "redis://redis:6379/0"
+      GARGOYLE_ONNX_MODEL_PATH: "/app/abuse_model.onnx"
+      GARGOYLE_ML_SCORE_THRESHOLD: "0.8"
+      GARGOYLE_ABUSE_BLOCK_THRESHOLD: "0.8"
+      GARGOYLE_ABUSE_SWEEP_THRESHOLD: "10"
+      GARGOYLE_ABUSE_SWEEP_WINDOW: "10s"
+      GARGOYLE_ADMIN_KEY: "${GARGOYLE_ADMIN_KEY:-}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      dummybackend:
+        condition: service_started
+
+  # ---------------------------------------------------------------------------
+  # Observability
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: gargoyle-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      - gargoyle
+
+# -----------------------------------------------------------------------------
+# Persistent Volumes
+# -----------------------------------------------------------------------------
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:

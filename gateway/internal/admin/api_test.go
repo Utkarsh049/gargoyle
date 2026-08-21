@@ -41,7 +41,6 @@ func (m *mockStore) CreateClient(ctx context.Context, params NewClientParams) (*
 		TargetURL:       u,
 		TargetURLString: params.TargetURL,
 		RateLimit:       params.RateLimit,
-		PlanTier:        params.PlanTier,
 		CreatedAt:       time.Now().UTC(),
 	}
 	m.clients = append(m.clients, c)
@@ -99,7 +98,6 @@ func setupTestAPI() (http.Handler, *mockStore) {
 				TargetURL:       u,
 				TargetURLString: "http://localhost:9000",
 				RateLimit:       100,
-				PlanTier:        "premium",
 				CreatedAt:       time.Now().UTC(),
 			},
 		},
@@ -173,7 +171,6 @@ func TestAPICreateClient(t *testing.T) {
 		Name:      "New Tenant",
 		TargetURL: "http://localhost:9001",
 		RateLimit: 500,
-		PlanTier:  "enterprise",
 	})
 
 	req := httptest.NewRequest(http.MethodPost, "/clients", bytes.NewReader(body))

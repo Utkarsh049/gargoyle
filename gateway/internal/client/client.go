@@ -13,6 +13,5 @@ type Client struct {
 	APIKeyHash string
 	TargetURL  *url.URL
 	RateLimit  int
-	PlanTier   string
 	CreatedAt  time.Time
 }

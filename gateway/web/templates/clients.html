@@ -16,7 +16,6 @@
           <th>Client ID</th>
           <th>Target Upstream URL</th>
           <th>Rate Limit</th>
-          <th>Plan Tier</th>
           <th>Total Requests</th>
           <th>Blocked Abuse</th>
           <th>Created</th>
@@ -30,7 +29,6 @@
             <td><code style="color: var(--text-medium); font-size: 11px;">{{.ID}}</code></td>
             <td><a href="{{.TargetURLString}}" target="_blank" rel="noopener noreferrer" style="color: var(--text-high); text-decoration: none;">{{.TargetURLString}}</a></td>
             <td>{{.RateLimit}} req/min</td>
-            <td><span class="badge {{if eq .PlanTier "enterprise"}}badge-allowed{{else}}badge-flagged{{end}}">{{.PlanTier}}</span></td>
             <td>{{.TotalRequests}}</td>
             <td><span style="color: {{if gt .BlockedRequests 0}}var(--status-blocked){{else}}var(--text-muted){{end}};">{{.BlockedRequests}}</span></td>
             <td style="color: var(--text-muted); font-size: 11px;">{{.CreatedAt.Format "Jan 02, 2006"}}</td>
@@ -38,7 +36,7 @@
           {{end}}
         {{else}}
           <tr>
-            <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 32px;">No clients registered yet.</td>
+            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 32px;">No clients registered yet.</td>
           </tr>
         {{end}}
       </tbody>
@@ -68,15 +66,6 @@
       <div class="form-group">
         <label class="form-label" for="rateLimit">Rate Limit (req/min)</label>
         <input class="form-input" type="number" id="rateLimit" name="rate_limit" value="1000" min="1" required>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label" for="planTier">Plan Tier</label>
-        <select class="form-input" id="planTier" name="plan_tier">
-          <option value="free">Free Tier (Standard)</option>
-          <option value="pro">Pro Tier (Priority)</option>
-          <option value="enterprise" selected>Enterprise Tier</option>
-        </select>
       </div>
 
       <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">

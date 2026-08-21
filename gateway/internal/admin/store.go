@@ -14,7 +14,6 @@ type ClientSummary struct {
 	TargetURL       *url.URL   `json:"target_url"`
 	TargetURLString string     `json:"target_url_str"`
 	RateLimit       int        `json:"rate_limit"`
-	PlanTier        string     `json:"plan_tier"`
 	CreatedAt       time.Time  `json:"created_at"`
 	TotalRequests   int64      `json:"total_requests"`
 	BlockedRequests int64      `json:"blocked_requests"`
@@ -26,7 +25,6 @@ type NewClientParams struct {
 	Name      string `json:"name"`
 	TargetURL string `json:"target_url"`
 	RateLimit int    `json:"rate_limit"`
-	PlanTier  string `json:"plan_tier"`
 }
 
 // LogEntry describes an individual security decision logged in the database.

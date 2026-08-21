@@ -45,7 +45,6 @@ func runCreateClient(args []string) error {
 	name := fs.String("name", "", "client name (required)")
 	target := fs.String("target", "", "upstream backend URL, e.g. http://localhost:9001 (required)")
 	rateLimit := fs.Int("rate-limit", 60, "requests per minute")
-	planTier := fs.String("plan", "free", "plan tier: free, pro, enterprise")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -81,14 +80,13 @@ func runCreateClient(args []string) error {
 		APIKeyHash: client.HashAPIKey(apiKey),
 		TargetURL:  *target,
 		RateLimit:  *rateLimit,
-		PlanTier:   *planTier,
 	})
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Created client %q (id=%s, target=%s, rate_limit=%d, plan=%s)\n",
-		created.Name, created.ID, created.TargetURL, created.RateLimit, created.PlanTier,
+	fmt.Printf("Created client %q (id=%s, target=%s, rate_limit=%d)\n",
+		created.Name, created.ID, created.TargetURL, created.RateLimit,
 	)
 	fmt.Println()
 	fmt.Println("API key (shown once — store it securely, Gargoyle only keeps its hash):")
