@@ -98,3 +98,40 @@ gargoyle/
 Everything a user needs — gateway, rate limiting, abuse detection, and dashboard — lives inside `gateway/` and ships as a single Docker image.
 
 ---
+
+## Quickstart (Docker Compose)
+
+The easiest way to run the entire Gargoyle stack (Gateway, PostgreSQL, Redis, Prometheus, Mock Upstream Backend) is with Docker Compose:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/Utkarsh049/gargoyle.git
+cd gargoyle
+
+# 2. Start the full stack
+docker compose up -d
+```
+
+### Accessing Services
+
+| Service | URL | Description |
+|---|---|---|
+| **Web Dashboard** | [http://localhost:8080/dashboard](http://localhost:8080/dashboard) | Live security telemetry, client manager, and audit logs |
+| **API Ingress** | `http://localhost:8080/*` | Protected gateway routing to upstream backends |
+| **Prometheus** | [http://localhost:9090](http://localhost:9090) | Scrapes gateway metrics at `/metrics` |
+| **Mock Backend** | `http://localhost:9000` | Upstream target service |
+
+### Generating Test Traffic
+
+Run the built-in simulator to generate mixed clean, burst, and attack traffic against the pre-seeded demo key:
+
+```bash
+python3 tools/simulator/simulate.py \
+  --target-url http://localhost:8080 \
+  --api-key gk_live_mRLoRus8nmTOakGwOaEm5d99f7WwbD9t \
+  -n 100 \
+  --mode mixed
+```
+
+Watch the live decision audit logs and sparkline charts update in real-time on your dashboard at `http://localhost:8080/dashboard`!
+
