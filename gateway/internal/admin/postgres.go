@@ -293,16 +293,22 @@ func (s *PostgresStore) GetRecentLogs(ctx context.Context, filter LogFilter) ([]
 // GetSystemStats aggregates telemetry to build the complete dashboard state.
 func (s *PostgresStore) GetSystemStats(ctx context.Context) (*SystemStats, error) {
 	var totalLogs, blockedAbuse, rateLimited int64
-	_ = s.pool.QueryRow(ctx, `
+	err := s.pool.QueryRow(ctx, `
 		SELECT 
 			COUNT(*),
 			COALESCE(COUNT(CASE WHEN outcome = 'blocked_abuse' THEN 1 END), 0),
 			COALESCE(COUNT(CASE WHEN outcome = 'rate_limited' THEN 1 END), 0)
 		FROM request_logs
 	`).Scan(&totalLogs, &blockedAbuse, &rateLimited)
+	if err != nil {
+		return nil, fmt.Errorf("admin: querying request_logs stats: %w", err)
+	}
 
 	var activeClients int
-	_ = s.pool.QueryRow(ctx, `SELECT COUNT(*) FROM clients`).Scan(&activeClients)
+	err = s.pool.QueryRow(ctx, `SELECT COUNT(*) FROM clients`).Scan(&activeClients)
+	if err != nil {
+		return nil, fmt.Errorf("admin: querying clients count: %w", err)
+	}
 
 	// In production, allowed requests are served without database insert,
 	// so calculate effective allowed total from baseline telemetry.
