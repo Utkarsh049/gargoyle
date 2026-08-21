@@ -54,6 +54,9 @@ type Config struct {
 	// MLScoreThreshold is the minimum model abuse probability (0.0 to 1.0) required to block a request (defaults to 0.8).
 	MLScoreThreshold float64
 
+	// AdminKey is an optional secret key for securing internal /api/admin endpoints.
+	AdminKey string
+
 	// ClientCacheTTL bounds how long a resolved client (API key -> target
 	// URL, rate limit, plan tier) is cached in memory before the next
 	// lookup re-reads it from Postgres.
@@ -164,6 +167,7 @@ func Load() (*Config, error) {
 		AbuseSweepWindow:    abuseSweepWindow,
 		ONNXModelPath:       getEnv("GARGOYLE_ONNX_MODEL_PATH", "abuse_model.onnx"),
 		MLScoreThreshold:    mlScoreThreshold,
+		AdminKey:            getEnv("GARGOYLE_ADMIN_KEY", ""),
 		ClientCacheTTL:      clientCacheTTL,
 		ReadHeaderTimeout:   readHeaderTimeout,
 		ReadTimeout:         readTimeout,

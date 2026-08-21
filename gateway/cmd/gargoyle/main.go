@@ -117,8 +117,13 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	r.Get("/healthz", handleHealthz)
 	r.Handle("/metrics", promhttp.Handler())
 
-	// Admin JSON REST API & Embedded Web UI
-	r.Mount("/api/admin", adminRouter)
+	// Admin JSON REST API (protected when GARGOYLE_ADMIN_KEY is configured)
+	r.Group(func(r chi.Router) {
+		r.Use(admin.AuthMiddleware(cfg.AdminKey, logger))
+		r.Mount("/api/admin", adminRouter)
+	})
+
+	// Embedded Web Dashboard UI
 	webHandler.MountRoutes(r)
 
 	// Authenticated and protected ingress routes
