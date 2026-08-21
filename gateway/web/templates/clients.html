@@ -28,7 +28,7 @@
           <tr>
             <td><strong>{{.Name}}</strong></td>
             <td><code style="color: var(--text-medium); font-size: 11px;">{{.ID}}</code></td>
-            <td><a href="{{.TargetURLString}}" target="_blank" style="color: var(--text-high); text-decoration: none;">{{.TargetURLString}}</a></td>
+            <td><a href="{{.TargetURLString}}" target="_blank" rel="noopener noreferrer" style="color: var(--text-high); text-decoration: none;">{{.TargetURLString}}</a></td>
             <td>{{.RateLimit}} req/min</td>
             <td><span class="badge {{if eq .PlanTier "enterprise"}}badge-allowed{{else}}badge-flagged{{end}}">{{.PlanTier}}</span></td>
             <td>{{.TotalRequests}}</td>

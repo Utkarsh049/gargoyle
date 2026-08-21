@@ -2,12 +2,11 @@ package admin
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
-	"math/rand"
 	"net/url"
+
+	"gargoyle/internal/client"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -139,18 +138,6 @@ func (s *PostgresStore) GetClient(ctx context.Context, id string) (*ClientSummar
 	return &c, nil
 }
 
-// generateAPIKey produces a secure random live API key.
-func generateAPIKey() (string, string) {
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	b := make([]byte, 32)
-	for i := range b {
-		b[i] = charset[rand.Intn(len(charset))]
-	}
-	rawKey := "gk_live_" + string(b)
-	hash := sha256.Sum256([]byte(rawKey))
-	return rawKey, hex.EncodeToString(hash[:])
-}
-
 // CreateClient registers a new tenant, returning the summary and the plaintext key.
 func (s *PostgresStore) CreateClient(ctx context.Context, params NewClientParams) (*ClientSummary, string, error) {
 	if params.Name == "" {
@@ -166,7 +153,11 @@ func (s *PostgresStore) CreateClient(ctx context.Context, params NewClientParams
 		params.PlanTier = "free"
 	}
 
-	rawKey, keyHash := generateAPIKey()
+	rawKey, err := client.GenerateAPIKey()
+	if err != nil {
+		return nil, "", fmt.Errorf("admin: generating api key: %w", err)
+	}
+	keyHash := client.HashAPIKey(rawKey)
 
 	query := `
 		INSERT INTO clients (name, api_key_hash, target_url, rate_limit, plan_tier)
@@ -178,7 +169,7 @@ func (s *PostgresStore) CreateClient(ctx context.Context, params NewClientParams
 		c         ClientSummary
 		targetRaw string
 	)
-	err := s.pool.QueryRow(ctx, query, params.Name, keyHash, params.TargetURL, params.RateLimit, params.PlanTier).Scan(
+	err = s.pool.QueryRow(ctx, query, params.Name, keyHash, params.TargetURL, params.RateLimit, params.PlanTier).Scan(
 		&c.ID,
 		&c.Name,
 		&c.APIKeyHash,
@@ -302,16 +293,22 @@ func (s *PostgresStore) GetRecentLogs(ctx context.Context, filter LogFilter) ([]
 // GetSystemStats aggregates telemetry to build the complete dashboard state.
 func (s *PostgresStore) GetSystemStats(ctx context.Context) (*SystemStats, error) {
 	var totalLogs, blockedAbuse, rateLimited int64
-	_ = s.pool.QueryRow(ctx, `
+	err := s.pool.QueryRow(ctx, `
 		SELECT 
 			COUNT(*),
 			COALESCE(COUNT(CASE WHEN outcome = 'blocked_abuse' THEN 1 END), 0),
 			COALESCE(COUNT(CASE WHEN outcome = 'rate_limited' THEN 1 END), 0)
 		FROM request_logs
 	`).Scan(&totalLogs, &blockedAbuse, &rateLimited)
+	if err != nil {
+		return nil, fmt.Errorf("admin: querying request_logs stats: %w", err)
+	}
 
 	var activeClients int
-	_ = s.pool.QueryRow(ctx, `SELECT COUNT(*) FROM clients`).Scan(&activeClients)
+	err = s.pool.QueryRow(ctx, `SELECT COUNT(*) FROM clients`).Scan(&activeClients)
+	if err != nil {
+		return nil, fmt.Errorf("admin: querying clients count: %w", err)
+	}
 
 	// In production, allowed requests are served without database insert,
 	// so calculate effective allowed total from baseline telemetry.
